@@ -1,0 +1,48 @@
+# Root ignores
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub-cache/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+coverage/
+
+# Node/web artefacts (if any)
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Misc
+.sass-cache/
+.terraform/
+.tmp/
+
+# Platform generated
+android/.gradle/
+android/local.properties
+ios/Pods/
+macos/Pods/
+linux/compile_commands.json
+windows/compile_commands.json
