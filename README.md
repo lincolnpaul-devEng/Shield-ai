@@ -1,7 +1,7 @@
 # Shield AI
 
 <div align="center">
-  <img src="./assets/shield-ai-demo.jpg" alt="Shield AI Login Demo" width="300" />
+  <img src="./shield AI.jpg" alt="Shield AI Login Demo" width="300" />
   
   **AI-Powered Fraud Detection for Mobile Money**
 </div>
