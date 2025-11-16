@@ -77,24 +77,7 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+  # Fonts are provided via the `google_fonts` package (see dependencies).
+  # If you prefer local fonts, add them under `assets/fonts/` and
+  # uncomment/replace the following block with the appropriate entries.
 
-  # Fonts
-  fonts:
-    - family: Poppins
-      fonts:
-        - asset: assets/fonts/Poppins-Regular.ttf
-        - asset: assets/fonts/Poppins-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/Poppins-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/Poppins-Bold.ttf
-          weight: 700
-    - family: Inter
-      fonts:
-        - asset: assets/fonts/Inter-Regular.ttf
-        - asset: assets/fonts/Inter-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/Inter-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/Inter-Bold.ttf
-          weight: 700
