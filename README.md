@@ -1,5 +1,9 @@
 # Shield AI
 
+<div align="center">
+  <img src="./assets/shield-ai-demo.jpg" alt="Shield AI Login Demo" width="300" />
+</div>
+
 A real-time fraud detection system for Kenyan mobile money transactions.
 
 Tech stack:
