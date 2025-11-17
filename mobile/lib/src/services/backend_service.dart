@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:process_run/process_run.dart';
 
 class BackendService {
   static const String backendUrl = 'http://localhost:5000';
@@ -40,8 +39,7 @@ class BackendService {
       }
 
       // Check if Python is available
-      final shell = Shell();
-      final pythonCheck = await shell.run('python --version');
+      final pythonCheck = await Process.run('python', ['--version']);
       if (pythonCheck.exitCode != 0) {
         throw Exception('Python is not available in PATH');
       }
@@ -50,13 +48,15 @@ class BackendService {
       final requirementsPath = '$backendDir/requirements.txt';
       if (File(requirementsPath).existsSync()) {
         print('Installing Python dependencies...');
-        await shell.run('pip install -r requirements.txt', workingDirectory: backendDir);
+        await Process.run('pip', ['install', '-r', 'requirements.txt'],
+            workingDirectory: backendDir);
       }
 
       // Start the Flask server in the background
       print('Starting Flask server...');
-      final process = await shell.start(
-        'python run.py',
+      await Process.start(
+        'python',
+        ['run.py'],
         workingDirectory: backendDir,
         runInShell: true,
       );
@@ -81,14 +81,12 @@ class BackendService {
   /// Stop the backend server (if needed)
   static Future<void> stopBackendServer() async {
     try {
-      final shell = Shell();
-
       // On Windows, kill Python processes
       if (Platform.isWindows) {
-        await shell.run('taskkill /F /IM python.exe /T');
+        await Process.run('taskkill', ['/F', '/IM', 'python.exe', '/T']);
       } else {
         // On Unix-like systems
-        await shell.run('pkill -f "python run.py"');
+        await Process.run('pkill', ['-f', 'python run.py']);
       }
 
       print('Backend server stopped');
