@@ -10,6 +10,7 @@ import 'src/providers/transaction_provider.dart';
 import 'src/providers/user_provider.dart';
 import 'src/routes/app_router.dart';
 import 'src/services/api_service.dart';
+import 'src/services/backend_service.dart';
 import 'src/services/demo_service.dart';
 import 'src/services/financial_strategist.dart';
 import 'src/services/insights_service.dart';
@@ -18,6 +19,14 @@ import 'src/services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Start backend server automatically
+  try {
+    await BackendService.startBackendServer();
+  } catch (e) {
+    print('Warning: Failed to start backend server: $e');
+    print('Make sure Python and backend dependencies are installed.');
+  }
 
   // Initialize services
   await NotificationService.initialize();

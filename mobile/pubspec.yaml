@@ -23,6 +23,7 @@ dependencies:
   # Background tasks and local storage
   workmanager: ^0.9.0+3
   shared_preferences: ^2.2.3
+  process_run: ^0.14.2
 
   # Fonts
   google_fonts: ^6.2.1
