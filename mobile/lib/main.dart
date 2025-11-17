@@ -94,7 +94,7 @@ class ShieldAIApp extends StatelessWidget {
         // Fraud provider depends on user provider
         ChangeNotifierProxyProvider<UserProvider, FraudProvider>(
           create: (_) => FraudProvider(apiService, UserProvider(apiService)),
-          update: (_, userProvider, _) => FraudProvider(apiService, userProvider),
+          update: (_, userProvider, __) => FraudProvider(apiService, userProvider),
         ),
 
         // Financial planning provider

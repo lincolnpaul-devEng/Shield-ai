@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../providers/transaction_provider.dart';
 import '../providers/user_provider.dart';
@@ -7,6 +8,7 @@ import '../providers/fraud_provider.dart';
 import '../providers/financial_provider.dart';
 import '../models/transaction.dart';
 import '../models/spending_plan.dart';
+import '../models/user.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -68,11 +70,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Header Section
-            _HeaderGreeting(name: user?.phone ?? 'Mteja'),
+            _HeaderGreeting(name: user?.fullName ?? 'User'),
             const SizedBox(height: 16),
 
-            // Financial Overview Cards
             Row(
               children: [
                 Expanded(child: _BalanceCard(balance: balance)),
@@ -82,13 +82,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Financial Health & Planning
             if (spendingPlan != null) ...[
               _FinancialHealthCard(plan: spendingPlan),
               const SizedBox(height: 16),
             ],
 
-            // Quick Actions
             _QuickActions(
               onNew: _onNewTx,
               onHistory: _onHistory,
@@ -97,7 +95,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Spending Insights
             if (hasTransactions) ...[
               _SpendingInsightsCard(
                 transactions: transactions,
@@ -107,7 +104,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 16),
             ],
 
-            // Recent Activity
             Text('Recent Activity', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             if (_loading)
@@ -117,7 +113,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             else
               ...transactions.take(5).map((t) => _TransactionTile(tx: t)),
 
-            // Quick Access to More
             if (hasTransactions) ...[
               const SizedBox(height: 16),
               _QuickAccessCard(
@@ -134,32 +129,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   double _calculateBalance(List<TransactionModel> txs) {
-    // Estimate current balance based on transaction patterns
-    double estimatedBalance = 10000.0; // Starting assumption
-
+    double estimatedBalance = 10000.0;
     final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
     final recentTxs = txs.where((t) => t.timestamp.isAfter(thirtyDaysAgo));
-
     for (final t in recentTxs) {
-      if (t.amount > 0) { // Outgoing
+      if (t.amount > 0) {
         estimatedBalance -= t.amount;
       }
     }
-
-    return estimatedBalance > 0 ? estimatedBalance : 1000.0; // Minimum balance
+    return estimatedBalance > 0 ? estimatedBalance : 1000.0;
   }
 
   double _calculateWeeklySpending(List<TransactionModel> txs) {
     final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
     final recentTxs = txs.where((t) => t.timestamp.isAfter(sevenDaysAgo) && t.amount > 0);
-
     return recentTxs.fold(0.0, (sum, t) => sum + t.amount);
   }
 
   double _calculateMonthlySpending(List<TransactionModel> txs) {
     final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
     final recentTxs = txs.where((t) => t.timestamp.isAfter(thirtyDaysAgo) && t.amount > 0);
-
     return recentTxs.fold(0.0, (sum, t) => sum + t.amount);
   }
 
@@ -184,20 +173,41 @@ class _HeaderGreeting extends StatelessWidget {
   final String name;
   const _HeaderGreeting({required this.name});
 
+  Future<void> _logout(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_id');
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Habari, $name', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 4),
-            Text('Karibu Shield AI', style: Theme.of(context).textTheme.bodyMedium),
-          ],
+        Expanded(
+          child: Text(
+            'Welcome ${name.isNotEmpty ? name : 'User'} to Shield AI',
+            style: Theme.of(context).textTheme.titleLarge,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-        const CircleAvatar(radius: 20, child: Icon(Icons.person)),
+        PopupMenuButton<String>(
+          onSelected: (value) {
+            if (value == 'logout') {
+              _logout(context);
+            }
+          },
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+            const PopupMenuItem<String>(
+              value: 'logout',
+              child: ListTile(
+                leading: Icon(Icons.logout),
+                title: Text('Logout'),
+              ),
+            ),
+          ],
+          child: const CircleAvatar(radius: 20, child: Icon(Icons.person)),
+        ),
       ],
     );
   }
@@ -404,7 +414,6 @@ class _SpendingInsightsCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Monthly spending summary
             Row(
               children: [
                 Expanded(
@@ -461,7 +470,7 @@ class _SpendingInsightsCard extends StatelessWidget {
     final categoryMap = <String, double>{};
 
     for (final tx in transactions) {
-      if (tx.amount > 0) { // Outgoing transactions
+      if (tx.amount > 0) {
         final category = _categorizeTransaction(tx.recipient);
         categoryMap[category] = (categoryMap[category] ?? 0) + tx.amount;
       }
@@ -589,7 +598,7 @@ class _QuickAccessCard extends StatelessWidget {
                 Expanded(
                   child: _QuickAccessButton(
                     icon: Icons.history,
-                    label: 'View All\nTransactions',
+                    label: 'View All\\nTransactions',
                     subtitle: '$transactionCount total',
                     onPressed: onViewAllTransactions,
                   ),
@@ -598,7 +607,7 @@ class _QuickAccessCard extends StatelessWidget {
                 Expanded(
                   child: _QuickAccessButton(
                     icon: Icons.account_balance_wallet,
-                    label: hasPlan ? 'Update\nPlan' : 'Create\nPlan',
+                    label: hasPlan ? 'Update\\nPlan' : 'Create\\nPlan',
                     subtitle: hasPlan ? 'AI-powered' : 'Get started',
                     onPressed: onViewPlanning,
                   ),
@@ -710,7 +719,7 @@ class _TransactionTile extends StatelessWidget {
 }
 
 class _FraudStatusBadge extends StatelessWidget {
-  final bool isActive; // true means protection OK (no recent fraud)
+  final bool isActive;
   const _FraudStatusBadge({required this.isActive});
 
   @override
@@ -721,7 +730,7 @@ class _FraudStatusBadge extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 10),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withAlpha(25),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color),
       ),

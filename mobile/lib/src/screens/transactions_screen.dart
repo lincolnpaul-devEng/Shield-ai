@@ -89,7 +89,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           onTap: () => _openDetails(t),
                         );
                       },
-                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      separatorBuilder: (_, __) => const Divider(height: 1),
                     ),
             ),
           ],

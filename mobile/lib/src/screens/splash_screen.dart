@@ -31,19 +31,20 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Future<void> _initializeApp() async {
-    // 1. Load essential data
-    await Future.delayed(Duration(milliseconds: 500));
+    // Wait for animations
+    await Future.delayed(Duration(milliseconds: 2000));
 
-    // 2. Check if user is logged in
-    final isLoggedIn = await _checkUserLogin();
+    final prefs = await SharedPreferences.getInstance();
+    final isLoggedIn = prefs.getString('user_id') != null;
+    final hasOnboarded = prefs.getBool('has_onboarded') ?? false;
 
-    // 3. Navigate after 2 seconds total
-    await Future.delayed(Duration(milliseconds: 1500));
-
-    Navigator.pushReplacementNamed(
-      context,
-      isLoggedIn ? '/dashboard' : '/onboarding'
-    );
+    if (isLoggedIn) {
+      Navigator.pushReplacementNamed(context, '/dashboard');
+    } else if (hasOnboarded) {
+      Navigator.pushReplacementNamed(context, '/login');
+    } else {
+      Navigator.pushReplacementNamed(context, '/onboarding');
+    }
   }
 
   @override
@@ -129,11 +130,5 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         ),
       ),
     );
-  }
-
-  Future<bool> _checkUserLogin() async {
-    // Check if user has existing session
-    final sharedPrefs = await SharedPreferences.getInstance();
-    return sharedPrefs.getString('user_id') != null;
   }
 }

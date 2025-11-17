@@ -11,27 +11,32 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _pinController = TextEditingController();
   final _confirmPinController = TextEditingController();
-  final _spendingLimitController = TextEditingController(text: '5000');
   bool _isLoading = false;
   String? _error;
 
   @override
   void dispose() {
+    _fullNameController.dispose();
     _phoneController.dispose();
     _pinController.dispose();
     _confirmPinController.dispose();
-    _spendingLimitController.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
+    final fullName = _fullNameController.text.trim();
     final phone = _phoneController.text.trim();
     final pin = _pinController.text.trim();
     final confirmPin = _confirmPinController.text.trim();
-    final spendingLimitText = _spendingLimitController.text.trim();
+
+    if (fullName.isEmpty) {
+      setState(() => _error = 'Please enter your full name');
+      return;
+    }
 
     if (phone.isEmpty) {
       setState(() => _error = 'Please enter your phone number');
@@ -53,33 +58,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    final spendingLimit = double.tryParse(spendingLimitText);
-    if (spendingLimit == null || spendingLimit <= 0) {
-      setState(() => _error = 'Please enter a valid spending limit');
-      return;
-    }
-
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      // Format phone number with +254 prefix
       final fullPhone = phone.startsWith('+254') ? phone : '+254$phone';
 
-      // Create user data for registration
       final userData = UserModel(
-        id: fullPhone, // Use phone as temporary ID
+        id: fullPhone,
+        fullName: fullName,
         phone: fullPhone,
-        normalSpendingLimit: spendingLimit,
+        normalSpendingLimit: 5000, // Default value
       );
 
       final userProvider = context.read<UserProvider>();
       final success = await userProvider.registerUser(userData);
 
       if (success && mounted) {
-        Navigator.pushReplacementNamed(context, '/permissions');
+        Navigator.pushReplacementNamed(context, '/login');
       } else {
         setState(() => _error = userProvider.error ?? 'Registration failed');
       }
@@ -105,7 +103,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Shield AI Logo/Branding
               Container(
                 width: 100,
                 height: 100,
@@ -143,7 +140,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 48),
 
-              // Phone Number Field
+              TextField(
+                controller: _fullNameController,
+                decoration: InputDecoration(
+                  labelText: 'Full Name',
+                  hintText: 'Enter your full name',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surface,
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
               TextField(
                 controller: _phoneController,
                 decoration: InputDecoration(
@@ -161,13 +172,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   fillColor: Theme.of(context).colorScheme.surface,
                 ),
                 keyboardType: TextInputType.phone,
-                maxLength: 9, // Kenyan phone numbers are 9 digits after +254
+                maxLength: 9,
                 buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
               ),
 
               const SizedBox(height: 24),
 
-              // MPesa PIN Field
               TextField(
                 controller: _pinController,
                 decoration: InputDecoration(
@@ -187,7 +197,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 24),
 
-              // Confirm PIN Field
               TextField(
                 controller: _confirmPinController,
                 decoration: InputDecoration(
@@ -205,28 +214,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
               ),
 
-              const SizedBox(height: 24),
-
-              // Spending Limit Field
-              TextField(
-                controller: _spendingLimitController,
-                decoration: InputDecoration(
-                  labelText: 'Monthly Spending Limit (KSH)',
-                  hintText: '5000',
-                  prefixText: 'KSH ',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surface,
-                  helperText: 'Shield AI will alert you for transactions exceeding this limit',
-                ),
-                keyboardType: TextInputType.number,
-              ),
-
               const SizedBox(height: 16),
 
-              // Error Message
               if (_error != null) ...[
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -255,7 +244,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 16),
               ],
 
-              // Register Button
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -286,7 +274,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 24),
 
-              // Login Link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -298,7 +285,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   TextButton(
                     onPressed: () {
-                      Navigator.pop(context); // Go back to login
+                      Navigator.pop(context);
                     },
                     child: Text(
                       'Login Here',
@@ -313,7 +300,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 32),
 
-              // Terms and Privacy
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(

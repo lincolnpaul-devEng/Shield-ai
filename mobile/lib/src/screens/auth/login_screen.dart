@@ -43,21 +43,21 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // Format phone number with +254 prefix
       final fullPhone = phone.startsWith('+254') ? phone : '+254$phone';
 
-      // Create user data for registration/login
+      // Pass an empty fullName since it's not needed for login
       final userData = UserModel(
-        id: fullPhone, // Use phone as temporary ID
+        id: fullPhone, 
+        fullName: '', 
         phone: fullPhone,
-        normalSpendingLimit: 5000.0, // Default limit
       );
 
       final userProvider = context.read<UserProvider>();
+      // This should be changed to a proper login method in the future
       final success = await userProvider.registerUser(userData);
 
       if (success && mounted) {
-        Navigator.pushReplacementNamed(context, '/permissions');
+        Navigator.pushReplacementNamed(context, '/dashboard');
       } else {
         setState(() => _error = userProvider.error ?? 'Login failed');
       }
@@ -83,7 +83,6 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Shield AI Logo/Branding
               Container(
                 width: 120,
                 height: 120,
@@ -121,7 +120,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 48),
 
-              // Phone Number Field
               TextField(
                 controller: _phoneController,
                 decoration: InputDecoration(
@@ -139,13 +137,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   fillColor: Theme.of(context).colorScheme.surface,
                 ),
                 keyboardType: TextInputType.phone,
-                maxLength: 9, // Kenyan phone numbers are 9 digits after +254
+                maxLength: 9,
                 buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
               ),
 
               const SizedBox(height: 24),
 
-              // MPesa PIN Field
               TextField(
                 controller: _pinController,
                 decoration: InputDecoration(
@@ -165,7 +162,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 16),
 
-              // Error Message
               if (_error != null) ...[
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -194,7 +190,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
               ],
 
-              // Login Button
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -225,7 +220,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 24),
 
-              // Register Link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -252,7 +246,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 32),
 
-              // Security Notice
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(

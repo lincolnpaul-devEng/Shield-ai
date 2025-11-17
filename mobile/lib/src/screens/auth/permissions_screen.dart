@@ -68,7 +68,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
   }
 
   void _continueToDashboard() {
-    Navigator.pushReplacementNamed(context, '/main');
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override

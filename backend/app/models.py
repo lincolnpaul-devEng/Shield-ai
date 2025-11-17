@@ -1,36 +1,40 @@
 from datetime import datetime
 from . import db
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 class User(db.Model):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
+    full_name = db.Column(db.String(128), nullable=False)
     phone = db.Column(db.String(32), unique=True, nullable=False, index=True)
-    normal_spending_limit = db.Column(db.Float, nullable=True)
+    pin_hash = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
 
-    # Add constraints
     __table_args__ = (
         db.CheckConstraint('length(phone) >= 10', name='phone_length_check'),
-        db.CheckConstraint('normal_spending_limit IS NULL OR normal_spending_limit > 0', name='spending_limit_positive'),
     )
 
-    # Relationship
     transactions = db.relationship(
         "Transaction",
         backref="user",
-        lazy="dynamic",  # allows filtering and pagination
+        lazy="dynamic",
         cascade="all, delete-orphan",
         order_by="desc(Transaction.timestamp)",
     )
 
-    # Serialization
+    def set_pin(self, pin):
+        self.pin_hash = generate_password_hash(pin)
+
+    def check_pin(self, pin):
+        return check_password_hash(self.pin_hash, pin)
+
     def to_dict(self, include_transactions: bool = False, limit: int | None = None):
         data = {
             "id": self.id,
+            "full_name": self.full_name,
             "phone": self.phone,
-            "normal_spending_limit": self.normal_spending_limit,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
         if include_transactions:
@@ -40,7 +44,6 @@ class User(db.Model):
             data["transactions"] = [t.to_dict() for t in q.all()]
         return data
 
-    # Query helpers
     def recent_transactions(self, limit: int = 20):
         return self.transactions.limit(limit).all()
 
@@ -62,7 +65,6 @@ class Transaction(db.Model):
     is_fraudulent = db.Column(db.Boolean, default=False, nullable=False, index=True)
     fraud_confidence = db.Column(db.Float, default=0.0, nullable=False)
 
-    # Add constraints
     __table_args__ = (
         db.CheckConstraint('amount > 0', name='amount_positive'),
         db.CheckConstraint('fraud_confidence >= 0.0 AND fraud_confidence <= 1.0', name='confidence_range'),

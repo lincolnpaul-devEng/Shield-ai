@@ -47,11 +47,6 @@ if __name__ == "__main__":
         if env == "development":
             with app.app_context():
                 db.create_all()
-                # Check if we need to seed (no users exist)
-                from app.models import User
-                if User.query.count() == 0:
-                    print("No users found, seeding database...")
-                    seed_database()
 
         host = os.getenv("HOST", "0.0.0.0")
         port = int(os.getenv("PORT", "5000"))

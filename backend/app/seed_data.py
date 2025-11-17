@@ -23,21 +23,24 @@ def seed_database():
         {
             'phone': '254712345678',
             'name': 'student_mary',
-            'spending_limit': 2000.0,  # Student budget
+            'full_name': 'Mary Student',
+            'pin': '1234',
             'daily_avg': 150.0,
             'transaction_freq': 'high',  # Frequent small transactions
         },
         {
             'phone': '254798765432',
             'name': 'business_david',
-            'spending_limit': 25000.0,  # Business owner
+            'full_name': 'David Business',
+            'pin': '5678',
             'daily_avg': 1500.0,
             'transaction_freq': 'medium',  # Regular business transactions
         },
         {
             'phone': '254711223344',
             'name': 'mama_mboga_sarah',
-            'spending_limit': 5000.0,  # Market vendor
+            'full_name': 'Sarah Mboga',
+            'pin': '1122',
             'daily_avg': 800.0,
             'transaction_freq': 'high',  # Many small customer payments
         }
@@ -47,8 +50,9 @@ def seed_database():
     for user_data in users_data:
         user = User(
             phone=user_data['phone'],
-            normal_spending_limit=user_data['spending_limit']
+            full_name=user_data['full_name'],
         )
+        user.set_pin(user_data['pin'])
         db.session.add(user)
         users.append((user, user_data))
         print(f"Created user: {user_data['name']} ({user_data['phone']})")

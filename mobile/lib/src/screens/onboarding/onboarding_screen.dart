@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingScreen extends StatefulWidget {
   @override
@@ -108,6 +109,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  Future<void> _completeOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_onboarded', true);
+    Navigator.pushReplacementNamed(context, '/permissions');
+  }
+
   Widget _buildButtons(BuildContext context) {
     return Padding(
       padding: EdgeInsets.all(24),
@@ -127,8 +134,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ElevatedButton(
             onPressed: () {
               if (_currentPage == _pages.length - 1) {
-                // Complete onboarding and go to permissions
-                Navigator.pushReplacementNamed(context, '/permissions');
+                _completeOnboarding();
               } else {
                 _controller.nextPage(
                   duration: Duration(milliseconds: 300),
