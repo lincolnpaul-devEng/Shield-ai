@@ -179,14 +179,23 @@ class _HeaderGreeting extends StatelessWidget {
     Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
 
+  String _extractFirstName(String fullName) {
+    if (fullName.isEmpty) return 'User';
+
+    // Split by spaces and take the first part
+    final nameParts = fullName.trim().split(' ');
+    return nameParts.isNotEmpty ? nameParts[0] : 'User';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final firstName = _extractFirstName(name);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
           child: Text(
-            'Welcome ${name.isNotEmpty ? name : 'User'} to Shield AI',
+            'Welcome $firstName to Shield AI',
             style: Theme.of(context).textTheme.titleLarge,
             overflow: TextOverflow.ellipsis,
           ),
