@@ -70,7 +70,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _HeaderGreeting(name: user?.fullName ?? 'User'),
+            _HeaderGreeting(name: user?.firstName ?? 'User'),
             const SizedBox(height: 16),
 
             Row(
@@ -179,23 +179,14 @@ class _HeaderGreeting extends StatelessWidget {
     Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
 
-  String _extractFirstName(String fullName) {
-    if (fullName.isEmpty) return 'User';
-
-    // Split by spaces and take the first part
-    final nameParts = fullName.trim().split(' ');
-    return nameParts.isNotEmpty ? nameParts[0] : 'User';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final firstName = _extractFirstName(name);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
           child: Text(
-            'Welcome $firstName to Shield AI',
+            'Welcome $name to Shield AI',
             style: Theme.of(context).textTheme.titleLarge,
             overflow: TextOverflow.ellipsis,
           ),

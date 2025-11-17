@@ -75,4 +75,13 @@ class UserModel {
     final kenyanPhoneRegex = RegExp(r'^(\+254|254|0)[17]\d{8}$');
     return kenyanPhoneRegex.hasMatch(phone.replaceAll(' ', ''));
   }
+
+  /// Computed property to get the first name from full name
+  String get firstName {
+    if (fullName.isEmpty) return 'User';
+
+    // Split by spaces and take the first part
+    final nameParts = fullName.trim().split(' ');
+    return nameParts.isNotEmpty ? nameParts[0] : 'User';
+  }
 }
