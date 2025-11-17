@@ -8,7 +8,6 @@ import '../providers/fraud_provider.dart';
 import '../providers/financial_provider.dart';
 import '../models/transaction.dart';
 import '../models/spending_plan.dart';
-import '../models/user.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
