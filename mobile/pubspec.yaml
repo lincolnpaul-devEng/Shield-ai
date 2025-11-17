@@ -1,5 +1,5 @@
-name: mobile
-description: "A new Flutter project."
+name: shield_ai
+description: "AI-Powered Fraud Detection for Mobile Money"
 publish_to: 'none'
 
 version: 1.0.0+1
