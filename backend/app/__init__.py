@@ -115,12 +115,12 @@ def _setup_cors(app: Flask) -> None:
 def _register_blueprints(app: Flask) -> None:
     # Import here to avoid circular imports
     try:
-        from .routes import api_bp  # Expecting a Blueprint named api_bp
-        from .demo_controller import demo_bp  # Demo controller blueprint
+        from .routes import api_bp, mpesa_bp, demo_bp  # All blueprints from main routes.py
 
         api_prefix = app.config.get("API_PREFIX", "/api")
         app.register_blueprint(api_bp, url_prefix=api_prefix)
         app.register_blueprint(demo_bp, url_prefix=api_prefix)  # Demo endpoints under /api
+        app.register_blueprint(mpesa_bp, url_prefix=api_prefix)  # M-Pesa endpoints under /api
     except Exception as e:
         app.logger.warning(f"Routes not registered: {e}")
 

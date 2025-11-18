@@ -67,12 +67,15 @@ class ApiService {
     return _decode(streamed);
   }
 
-  Future<http.StreamedResponse> _send(http.BaseRequest request, {int? retryCount}) async {
+  Future<http.StreamedResponse> _send(http.BaseRequest originalRequest, {int? retryCount}) async {
     final attempts = retryCount ?? _maxRetries;
 
     for (int attempt = 0; attempt < attempts; attempt++) {
       try {
-        // Apply request interceptors
+        // Create a fresh copy of the request for each attempt
+        final request = _cloneRequest(originalRequest);
+
+        // Apply request interceptors to the fresh request
         var processedRequest = request;
         for (final i in _requestInterceptors) {
           processedRequest = await i(processedRequest);
@@ -101,6 +104,29 @@ class ApiService {
     }
 
     throw Exception('All retry attempts failed');
+  }
+
+  /// Clone a request to create a fresh copy for retry attempts
+  http.BaseRequest _cloneRequest(http.BaseRequest original) {
+    if (original is http.Request) {
+      final cloned = http.Request(original.method, original.url);
+      cloned.headers.addAll(original.headers);
+      if (original.body.isNotEmpty) {
+        cloned.body = original.body;
+      }
+      return cloned;
+    } else if (original is http.MultipartRequest) {
+      final cloned = http.MultipartRequest(original.method, original.url);
+      cloned.headers.addAll(original.headers);
+      cloned.fields.addAll(original.fields);
+      cloned.files.addAll(original.files);
+      return cloned;
+    } else {
+      // For other request types, create a basic request
+      final cloned = http.Request(original.method, original.url);
+      cloned.headers.addAll(original.headers);
+      return cloned;
+    }
   }
 
   Future<Map<String, dynamic>> _decode(http.StreamedResponse response) async {
@@ -183,6 +209,22 @@ class ApiService {
       developer.log('getUserTransactions failed: $e', name: 'ApiService', error: e);
       // Return empty list as fallback
       return [];
+    }
+  }
+
+  /// Login a user
+  Future<UserModel> loginUser(String phone, String pin) async {
+    try {
+      final requestData = {
+        'phone': phone,
+        'pin': pin,
+      };
+
+      final response = await post('/login', requestData);
+      return UserModel.fromJson(response);
+    } catch (e) {
+      developer.log('loginUser failed: $e', name: 'ApiService', error: e);
+      rethrow;
     }
   }
 

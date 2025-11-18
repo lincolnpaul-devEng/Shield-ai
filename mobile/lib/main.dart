@@ -57,7 +57,7 @@ Future<void> main() async {
 
   // Initialize M-Pesa sync service
   final mpesaSyncService = MpesaSyncService();
-  await mpesaSyncService.initialize();
+  await mpesaSyncService.initialize(apiService);
 
   // Initialize financial strategist
   final financialStrategist = FinancialStrategist(

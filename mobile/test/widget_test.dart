@@ -5,23 +5,22 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mobile/main.dart';
-import 'package:mobile/src/services/api_service.dart';
-import 'package:mobile/src/services/demo_service.dart';
-import 'package:mobile/src/services/financial_strategist.dart';
-import 'package:mobile/src/services/insights_service.dart';
-import 'package:mobile/src/services/mpesa_sync_service.dart';
+import 'package:shield_ai/main.dart';
+import 'package:shield_ai/src/services/api_service.dart';
+import 'package:shield_ai/src/services/demo_service.dart';
+import 'package:shield_ai/src/services/financial_strategist.dart';
+import 'package:shield_ai/src/services/insights_service.dart';
+import 'package:shield_ai/src/services/mpesa_sync_service.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('App smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     final api = ApiService(baseUrl: 'http://localhost:5000/api');
     final demo = DemoService(api);
     final mpesaSync = MpesaSyncService();
-    await mpesaSync.initialize();
+    await mpesaSync.initialize(api);
     final financialStrategist = FinancialStrategist(apiKey: '');
     final insightsService = InsightsService();
     await tester.pumpWidget(ShieldAIApp(
@@ -32,16 +31,10 @@ void main() {
       insightsService: insightsService,
     ));
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Wait for the app to settle
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that the app builds without errors
+    expect(find.byType(ShieldAIApp), findsOneWidget);
   });
 }

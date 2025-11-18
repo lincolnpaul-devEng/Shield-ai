@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
-import '../../models/user.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -45,16 +44,8 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final fullPhone = phone.startsWith('+254') ? phone : '+254$phone';
 
-      // Pass an empty fullName since it's not needed for login
-      final userData = UserModel(
-        id: fullPhone, 
-        fullName: '', 
-        phone: fullPhone,
-      );
-
       final userProvider = context.read<UserProvider>();
-      // This should be changed to a proper login method in the future
-      final success = await userProvider.registerUser(userData);
+      final success = await userProvider.loginUser(fullPhone, pin);
 
       if (success && mounted) {
         Navigator.pushReplacementNamed(context, '/dashboard');

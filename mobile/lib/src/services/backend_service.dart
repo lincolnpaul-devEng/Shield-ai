@@ -1,80 +1,24 @@
 import 'dart:io';
-import 'package:http/http.dart' as http;
 
 class BackendService {
-  static const String backendUrl = 'http://localhost:5000';
-  static const String healthEndpoint = '/health';
-
-  /// Check if backend server is running
-  static Future<bool> _isBackendRunning() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$backendUrl$healthEndpoint'),
-      ).timeout(const Duration(seconds: 3));
-
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
-  }
-
   /// Start the Flask backend server
   static Future<void> startBackendServer() async {
     try {
-      // First check if backend is already running
-      final isRunning = await _isBackendRunning();
-      if (isRunning) {
-        print('Backend is already running on $backendUrl');
+      // Check if backend is already running
+      final client = HttpClient();
+      final request = await client.get('localhost', 5000, '/health');
+      final response = await request.close().timeout(Duration(seconds: 2));
+      if (response.statusCode == 200) {
+        print('Backend is already running');
+        client.close();
         return;
       }
-
-      print('Starting Flask backend server...');
-
-      // Get the backend directory path (assuming it's at ../backend relative to mobile)
-      final backendDir = Directory('../backend').absolute.path;
-
-      // Check if backend directory exists
-      if (!Directory(backendDir).existsSync()) {
-        throw Exception('Backend directory not found at: $backendDir');
-      }
-
-      // Check if Python is available
-      final pythonCheck = await Process.run('python', ['--version']);
-      if (pythonCheck.exitCode != 0) {
-        throw Exception('Python is not available in PATH');
-      }
-
-      // Check if requirements are installed (optional but helpful)
-      final requirementsPath = '$backendDir/requirements.txt';
-      if (File(requirementsPath).existsSync()) {
-        print('Installing Python dependencies...');
-        await Process.run('pip', ['install', '-r', 'requirements.txt'],
-            workingDirectory: backendDir);
-      }
-
-      // Start the Flask server in the background
-      print('Starting Flask server...');
-      await Process.start(
-        'python',
-        ['run.py'],
-        workingDirectory: backendDir,
-        runInShell: true,
-      );
-
-      // Wait a bit for the server to start
-      await Future.delayed(const Duration(seconds: 3));
-
-      // Verify the server started successfully
-      final serverStarted = await _isBackendRunning();
-      if (serverStarted) {
-        print('Backend server started successfully on $backendUrl');
-      } else {
-        throw Exception('Backend server failed to start');
-      }
-
+      client.close();
     } catch (e) {
-      print('Failed to start backend server: $e');
-      rethrow;
+      // Backend not running, start it
+      print('Starting Flask backend server...');
+      // Run Python backend
+      await Process.start('python', ['run.py'], workingDirectory: '../backend');
     }
   }
 

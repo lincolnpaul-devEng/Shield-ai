@@ -10,6 +10,28 @@ class UserProvider extends ChangeNotifier {
 
   UserProvider(this.api);
 
+  Future<bool> loginUser(String phone, String pin) async {
+    isLoading = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      currentUser = await api.loginUser(phone, pin);
+      error = null;
+      return true;
+    } catch (e) {
+      error = e.toString();
+      currentUser = null;
+      if (kDebugMode) {
+        print('loginUser error: $e');
+      }
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> registerUser(UserModel userData) async {
     isLoading = true;
     error = null;

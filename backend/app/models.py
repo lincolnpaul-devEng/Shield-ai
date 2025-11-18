@@ -89,3 +89,6 @@ class Transaction(db.Model):
         if limit is not None:
             q = q.limit(limit)
         return q.all()
+
+# Import M-Pesa models to ensure they are registered with SQLAlchemy
+from .mpesa import models as mpesa_models  # noqa: E402,F401

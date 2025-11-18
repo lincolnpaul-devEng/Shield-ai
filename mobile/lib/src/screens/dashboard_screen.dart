@@ -86,13 +86,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 16),
             ],
 
-            _QuickActions(
-              onNew: _onNewTx,
-              onHistory: _onHistory,
-              onPlanning: _onPlanning,
-              onSettings: _onSettings,
-            ),
-            const SizedBox(height: 24),
 
             if (hasTransactions) ...[
               _SpendingInsightsCard(
