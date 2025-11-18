@@ -1,0 +1,66 @@
+# Shield AI Notice
+
+## Project Information
+- **Project Name**: Shield AI
+- **Description**: AI-Powered Fraud Detection for Mobile Money
+- **Version**: 1.0.0
+- **Release Date**: November 2025
+
+## Copyright Notice
+Copyright © 2025 Shield AI. All rights reserved.
+
+Shield AI is proprietary software developed by Shield AI. This software and its documentation are protected by copyright laws and international treaties.
+
+## Ownership and Attribution
+- **Owner**: Shield AI
+- **Maintainer**: Shield AI Development Team
+- **Contact**: info@shieldai.com
+
+## Third-Party Components
+
+This project includes or depends on the following third-party components:
+
+### Backend Dependencies
+- **Flask**: BSD-3-Clause License
+- **SQLAlchemy**: MIT License
+- **Flask-CORS**: MIT License
+- **Werkzeug**: BSD-3-Clause License
+- **Requests**: Apache 2.0 License
+- **Flask-Migrate**: MIT License
+
+### Frontend Dependencies
+- **Flutter**: BSD-3-Clause License
+- **Dart SDK**: BSD-3-Clause License
+- **HTTP Package**: BSD-3-Clause License
+- **Shared Preferences**: BSD-3-Clause License
+- **Provider**: MIT License
+
+### AI/ML Dependencies
+- **scikit-learn**: BSD-3-Clause License
+- **NumPy**: BSD-3-Clause License
+- **pandas**: BSD-3-Clause License
+
+## External Services
+This application integrates with:
+- **M-Pesa API**: Owned by Safaricom PLC/Vodacom Group
+- **OpenRouter API**: Third-party AI model provider
+
+## Disclaimer
+This software is provided "as is" without warranty of any kind. Shield AI does not guarantee the accuracy, reliability, or completeness of the fraud detection algorithms or any other functionality.
+
+## Compliance
+Shield AI complies with:
+- Kenyan data protection laws
+- International financial services regulations
+- Mobile money operator requirements
+- AI ethics and responsible use guidelines
+
+## Support
+For technical support, licensing inquiries, or business partnerships:
+- Email: support@shieldai.com
+- Website: https://shieldai.com
+- Documentation: https://docs.shieldai.com
+
+---
+
+**Last Updated:** November 2025

@@ -225,15 +225,29 @@ flutter test
 
 ## Contributing
 
-1. Create a feature branch
-2. Make your changes
-3. Test thoroughly
-4. Submit a pull request
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for detailed information on:
+- Development setup
+- Code standards
+- Pull request process
+- Reporting issues
 
-## License
+## License & Ownership
 
-Proprietary - All rights reserved
+Shield AI is proprietary software. See our [License Agreement](LICENSE) for full terms.
+
+### Additional Documentation
+- **[Code of Conduct](CODE_OF_CONDUCT.md)** - Community guidelines and standards
+- **[Authors](AUTHORS)** - Project contributors and ownership
+- **[Notice](NOTICE)** - Legal notices and third-party components
+
+### Contact Information
+- **General Inquiries**: info@shieldai.com
+- **Technical Support**: support@shieldai.com
+- **Licensing**: licensing@shieldai.com
+- **Conduct Issues**: conduct@shieldai.com
 
 ---
+
+**Copyright © 2025 Shield AI. All rights reserved.**
 
 **Last Updated:** November 2025
