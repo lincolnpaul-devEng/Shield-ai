@@ -144,7 +144,7 @@ class _EmptyStateView extends StatelessWidget {
             Icon(
               Icons.account_balance_wallet,
               size: 64,
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
@@ -270,7 +270,7 @@ class _FinancialHealthCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: color),
                   ),
@@ -490,7 +490,7 @@ class _ConversationBubble extends StatelessWidget {
                 message.answer,
                 style: TextStyle(
                   color: isUser
-                      ? Theme.of(context).colorScheme.onPrimary.withOpacity(0.9)
+                      ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9)
                       : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -568,7 +568,7 @@ class _PredictionCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
+                    color: Colors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -663,7 +663,7 @@ class _AnomalyCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: anomaly.severityColor.withOpacity(0.1),
+                    color: anomaly.severityColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -787,7 +787,7 @@ class _SuggestionCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: suggestion.priorityColor.withOpacity(0.1),
+                    color: suggestion.priorityColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -918,7 +918,7 @@ class _CategoryItem extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Icon(_getCategoryIcon(category.category), color: color, size: 16),
@@ -968,7 +968,7 @@ class _CategoryItem extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isOverBudget ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                  color: isOverBudget ? Colors.red.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isOverBudget ? Colors.red : Colors.green,
