@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -10,7 +12,6 @@ import 'src/providers/transaction_provider.dart';
 import 'src/providers/user_provider.dart';
 import 'src/routes/app_router.dart';
 import 'src/services/api_service.dart';
-import 'src/services/backend_service.dart';
 import 'src/services/demo_service.dart';
 import 'src/services/financial_strategist.dart';
 import 'src/services/insights_service.dart';
@@ -20,13 +21,13 @@ import 'src/services/notification_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Start backend server automatically
-  try {
-    await BackendService.startBackendServer();
-  } catch (e) {
-    print('Warning: Failed to start backend server: $e');
-    print('Make sure Python and backend dependencies are installed.');
-  }
+  // Start backend server automatically - DISABLED to allow manual control
+  // try {
+  //   await BackendService.startBackendServer();
+  // } catch (e) {
+  //   print('Warning: Failed to start backend server: $e');
+  //   print('Make sure Python and backend dependencies are installed.');
+  // }
 
   // Initialize services
   await NotificationService.initialize();
@@ -47,11 +48,25 @@ Future<void> main() async {
     ),
   );
 
+  // Determine the base URL dynamically.
+  // The --dart-define flag can override this, e.g.:
+  // flutter run --dart-define=API_BASE_URL=http://prod.api.com/api
+  String getBaseUrl() {
+    // First, check for an environment variable override.
+    const fromEnv = String.fromEnvironment('API_BASE_URL');
+    if (fromEnv.isNotEmpty) {
+      return fromEnv;
+    }
+    // Default for Android emulator.
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:5000/api';
+    }
+    // Default for iOS simulator, web, and desktop.
+    return 'http://localhost:5000/api';
+  }
+
   // Dependency injection setup
-  final apiService = ApiService(baseUrl: const String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://localhost:5000/api',
-  ));
+  final apiService = ApiService(baseUrl: getBaseUrl());
 
   final demoService = DemoService(apiService);
 

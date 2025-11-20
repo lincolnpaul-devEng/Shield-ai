@@ -14,20 +14,20 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
-        id: json['id'] as String? ?? '',
-        fullName: json['fullName'] as String? ?? '',
-        phone: json['phone'] as String? ?? '',
-        normalSpendingLimit: (json['normal_spending_limit'] as num?)?.toDouble(),
-        createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : null,
-      );
+         id: json['id'] as String? ?? '',
+         fullName: json['full_name'] as String? ?? '',
+         phone: json['phone'] as String? ?? '',
+         normalSpendingLimit: (json['normal_spending_limit'] as num?)?.toDouble(),
+         createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : null,
+       );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'fullName': fullName,
-        'phone': phone,
-        if (normalSpendingLimit != null) 'normal_spending_limit': normalSpendingLimit,
-        if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
-      };
+         'id': id,
+         'full_name': fullName,
+         'phone': phone,
+         if (normalSpendingLimit != null) 'normal_spending_limit': normalSpendingLimit,
+         if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+       };
 
   UserModel copyWith({
     String? id,
