@@ -55,6 +55,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: const Text('Financial Dashboard'),
         actions: [
+          IconButton(
+            onPressed: _syncBalance,
+            icon: const Icon(Icons.sync),
+            tooltip: 'Sync M-Pesa Balance',
+          ),
           _FraudStatusBadge(isActive: fraudProvider.lastResult?.isFraud == false),
           const SizedBox(width: 12),
         ],
@@ -121,15 +126,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   double _calculateBalance(List<TransactionModel> txs) {
-    double estimatedBalance = 10000.0;
-    final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
-    final recentTxs = txs.where((t) => t.timestamp.isAfter(thirtyDaysAgo));
-    for (final t in recentTxs) {
+    // Start with the synced M-Pesa balance
+    final user = context.read<UserProvider>().currentUser;
+    double balance = user?.mpesaBalance ?? 0.0;
+
+    // Adjust balance based on all transactions since account creation
+    // Positive amount = outgoing (subtract), Negative amount = incoming (add)
+    for (final t in txs) {
       if (t.amount > 0) {
-        estimatedBalance -= t.amount;
+        // Outgoing transaction
+        balance -= t.amount;
+      } else {
+        // Incoming transaction (amount is negative, so we add the absolute value)
+        balance += t.amount.abs();
       }
     }
-    return estimatedBalance > 0 ? estimatedBalance : 1000.0;
+
+    return balance >= 0 ? balance : 0.0;
   }
 
   double _calculateWeeklySpending(List<TransactionModel> txs) {
@@ -154,6 +167,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _onPlanning() {
     Navigator.pushNamed(context, '/financial-planning');
+  }
+
+  void _syncBalance() {
+    showDialog(
+      context: context,
+      builder: (context) => _BalanceSyncDialog(),
+    );
   }
 
   void _onSettings() {
@@ -752,17 +772,137 @@ class _EmptyState extends StatelessWidget {
   const _EmptyState();
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300),
+         padding: const EdgeInsets.all(16),
+         decoration: BoxDecoration(
+           borderRadius: BorderRadius.circular(12),
+           border: Border.all(color: Colors.grey.shade300),
+         ),
+         child: Row(
+           children: const [
+             Icon(Icons.info_outline),
+             SizedBox(width: 8),
+             Expanded(child: Text('No recent transactions yet. Start by making a new transaction.')),
+           ],
+         ),
+       );
+}
+
+class _BalanceSyncDialog extends StatefulWidget {
+  const _BalanceSyncDialog();
+
+  @override
+  State<_BalanceSyncDialog> createState() => _BalanceSyncDialogState();
+}
+
+class _BalanceSyncDialogState extends State<_BalanceSyncDialog> {
+  final TextEditingController _balanceController = TextEditingController();
+  final TextEditingController _pinController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _balanceController.dispose();
+    _pinController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Sync M-Pesa Balance'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Enter your current M-Pesa balance to sync with Shield AI. This will ensure accurate balance calculations.',
+            style: TextStyle(fontSize: 14),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _balanceController,
+            decoration: const InputDecoration(
+              labelText: 'Current M-Pesa Balance (KSH)',
+              hintText: 'e.g. 2500.50',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _pinController,
+            decoration: const InputDecoration(
+              labelText: 'M-Pesa PIN',
+              hintText: 'Enter your PIN to verify',
+              border: OutlineInputBorder(),
+            ),
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
         ),
-        child: Row(
-          children: const [
-            Icon(Icons.info_outline),
-            SizedBox(width: 8),
-            Expanded(child: Text('No recent transactions yet. Start by making a new transaction.')),
-          ],
+        ElevatedButton(
+          onPressed: _isLoading ? null : _syncBalance,
+          child: _isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Sync Balance'),
         ),
+      ],
+    );
+  }
+
+  Future<void> _syncBalance() async {
+    final balanceText = _balanceController.text.trim();
+    final pin = _pinController.text.trim();
+
+    if (balanceText.isEmpty || pin.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter both balance and PIN')),
       );
+      return;
+    }
+
+    final balance = double.tryParse(balanceText);
+    if (balance == null || balance < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid balance')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final userProvider = context.read<UserProvider>();
+      final success = await userProvider.updateMpesaBalance(balance, pin);
+
+      if (success && mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Balance synced successfully')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(userProvider.error ?? 'Failed to sync balance')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 }

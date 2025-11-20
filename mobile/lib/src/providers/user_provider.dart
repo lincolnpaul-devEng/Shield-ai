@@ -32,13 +32,13 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> registerUser(UserModel userData) async {
+  Future<bool> registerUser(UserModel userData, String pin) async {
     isLoading = true;
     error = null;
     notifyListeners();
 
     try {
-      currentUser = await api.registerUser(userData);
+      currentUser = await api.registerUser(userData, pin);
       error = null;
       return true;
     } catch (e) {
@@ -46,6 +46,31 @@ class UserProvider extends ChangeNotifier {
       currentUser = null;
       if (kDebugMode) {
         print('registerUser error: $e');
+      }
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateMpesaBalance(double balance, String pin) async {
+    if (currentUser == null) return false;
+
+    isLoading = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final response = await api.updateMpesaBalance(currentUser!.phone, balance, pin);
+      // Update local user data
+      currentUser = currentUser!.copyWith(mpesaBalance: balance);
+      error = null;
+      return true;
+    } catch (e) {
+      error = e.toString();
+      if (kDebugMode) {
+        print('updateMpesaBalance error: $e');
       }
       return false;
     } finally {

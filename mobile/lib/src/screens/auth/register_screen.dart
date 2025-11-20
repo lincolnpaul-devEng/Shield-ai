@@ -70,11 +70,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         id: fullPhone,
         fullName: fullName,
         phone: fullPhone,
+        mpesaBalance: 0.0, // New users start with 0 balance
         normalSpendingLimit: 5000, // Default value
       );
 
       final userProvider = context.read<UserProvider>();
-      final success = await userProvider.registerUser(userData);
+      final success = await userProvider.registerUser(userData, pin);
 
       if (success && mounted) {
         Navigator.pushReplacementNamed(context, '/login');

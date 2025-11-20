@@ -10,6 +10,7 @@ class User(db.Model):
     full_name = db.Column(db.String(128), nullable=False)
     phone = db.Column(db.String(32), unique=True, nullable=False, index=True)
     pin_hash = db.Column(db.String(256), nullable=False)
+    mpesa_balance = db.Column(db.Float, default=0.0, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     __table_args__ = (
@@ -35,6 +36,7 @@ class User(db.Model):
             "id": self.id,
             "full_name": self.full_name,
             "phone": self.phone,
+            "mpesa_balance": float(self.mpesa_balance) if self.mpesa_balance is not None else 0.0,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
         if include_transactions:

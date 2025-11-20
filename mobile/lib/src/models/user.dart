@@ -2,6 +2,7 @@ class UserModel {
   final String id;
   final String fullName;
   final String phone;
+  final double mpesaBalance;
   final double? normalSpendingLimit;
   final DateTime? createdAt;
 
@@ -9,6 +10,7 @@ class UserModel {
     required this.id,
     required this.fullName,
     required this.phone,
+    required this.mpesaBalance,
     this.normalSpendingLimit,
     this.createdAt,
   });
@@ -17,6 +19,7 @@ class UserModel {
          id: json['id']?.toString() ?? '',
          fullName: json['full_name'] as String? ?? '',
          phone: json['phone'] as String? ?? '',
+         mpesaBalance: (json['mpesa_balance'] as num?)?.toDouble() ?? 0.0,
          normalSpendingLimit: (json['normal_spending_limit'] as num?)?.toDouble(),
          createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : null,
        );
@@ -33,6 +36,7 @@ class UserModel {
     String? id,
     String? fullName,
     String? phone,
+    double? mpesaBalance,
     double? normalSpendingLimit,
     DateTime? createdAt,
   }) {
@@ -40,6 +44,7 @@ class UserModel {
       id: id ?? this.id,
       fullName: fullName ?? this.fullName,
       phone: phone ?? this.phone,
+      mpesaBalance: mpesaBalance ?? this.mpesaBalance,
       normalSpendingLimit: normalSpendingLimit ?? this.normalSpendingLimit,
       createdAt: createdAt ?? this.createdAt,
     );

@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request, current_app
 from datetime import datetime
+from .. import db
 from ..models import User, Transaction
 from ..fraud_detector import FraudDetector
 
@@ -82,7 +83,6 @@ def check_fraud():
 
         # Save transaction to database
         try:
-            from . import db
             transaction = Transaction(
                 user_id=user.id,
                 amount=float(transaction_data['amount']),
@@ -99,7 +99,6 @@ def check_fraud():
             fraud_result['transaction_id'] = transaction.id
 
         except Exception as db_error:
-            from . import db
             db.session.rollback()
             current_app.logger.error(f"Database error saving transaction: {db_error}")
             # Still return fraud result even if save fails
@@ -108,7 +107,6 @@ def check_fraud():
         return jsonify(fraud_result), 200
 
     except Exception as e:
-        from . import db
         current_app.logger.exception("Error in /check-fraud")
         db.session.rollback()
         return jsonify({"error": "internal_server_error", "message": "An unexpected error occurred"}), 500
@@ -178,14 +176,55 @@ def create_user():
         )
         user.set_pin(pin)
 
-        from . import db
         db.session.add(user)
         db.session.commit()
 
         return jsonify(user.to_dict()), 201
 
     except Exception as e:
-        from . import db
         current_app.logger.exception("Error in /users")
+        db.session.rollback()
+        return jsonify({"error": "internal_server_error", "message": "An unexpected error occurred"}), 500
+
+
+@api_bp.route("/users/<string:user_id>/balance", methods=["POST"])
+def update_balance(user_id: str):
+    try:
+        payload = request.get_json(silent=True) or {}
+
+        # Validate required fields
+        balance = payload.get('balance')
+        pin = payload.get('pin')
+
+        if balance is None or pin is None:
+            return jsonify({"error": "bad_request", "message": "Balance and PIN are required"}), 400
+
+        try:
+            balance = float(balance)
+            if balance < 0:
+                return jsonify({"error": "bad_request", "message": "Balance cannot be negative"}), 400
+        except (TypeError, ValueError):
+            return jsonify({"error": "bad_request", "message": "Invalid balance format"}), 400
+
+        # Find user by phone number
+        user = User.query.filter_by(phone=user_id).first()
+        if not user:
+            return jsonify({"error": "not_found", "message": "User not found"}), 404
+
+        # Verify PIN
+        if not user.check_pin(pin):
+            return jsonify({"error": "unauthorized", "message": "Invalid PIN"}), 401
+
+        # Update balance
+        user.mpesa_balance = balance
+        db.session.commit()
+
+        return jsonify({
+            "message": "Balance updated successfully",
+            "balance": float(user.mpesa_balance)
+        }), 200
+
+    except Exception as e:
+        current_app.logger.exception("Error in /users/<user_id>/balance")
         db.session.rollback()
         return jsonify({"error": "internal_server_error", "message": "An unexpected error occurred"}), 500

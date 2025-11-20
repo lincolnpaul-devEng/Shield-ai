@@ -229,9 +229,12 @@ class ApiService {
   }
 
   /// Register a new user
-  Future<UserModel> registerUser(UserModel userData) async {
+  Future<UserModel> registerUser(UserModel userData, String pin) async {
     try {
       final requestData = userData.toJson();
+      // Add the PIN to the request
+      requestData['pin'] = pin;
+
       // Remove fields that shouldn't be sent in registration
       requestData.remove('id');
       requestData.remove('created_at');
@@ -240,8 +243,24 @@ class ApiService {
       return UserModel.fromJson(response);
     } catch (e) {
       developer.log('registerUser failed: $e', name: 'ApiService', error: e);
-      // Return the input user as fallback (assuming local creation)
-      return userData;
+      // Re-throw the exception to be handled by the provider
+      rethrow;
+    }
+  }
+
+  /// Update user's M-Pesa balance
+  Future<Map<String, dynamic>> updateMpesaBalance(String phone, double balance, String pin) async {
+    try {
+      final requestData = {
+        'balance': balance,
+        'pin': pin,
+      };
+
+      final response = await post('/users/$phone/balance', requestData);
+      return response;
+    } catch (e) {
+      developer.log('updateMpesaBalance failed: $e', name: 'ApiService', error: e);
+      rethrow;
     }
   }
 }

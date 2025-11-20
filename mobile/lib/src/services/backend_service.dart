@@ -18,7 +18,19 @@ class BackendService {
       // Backend not running, start it
       print('Starting Flask backend server...');
       // Run Python backend
-      await Process.start('python', ['run.py'], workingDirectory: '../backend');
+      if (Platform.isWindows) {
+        await Process.start(
+          '..\\backend\\.venv\\Scripts\\python.exe',
+          ['run.py'],
+          workingDirectory: '../backend',
+        );
+      } else {
+        await Process.start(
+          '../backend/.venv/bin/python',
+          ['run.py'],
+          workingDirectory: '../backend',
+        );
+      }
     }
   }
 

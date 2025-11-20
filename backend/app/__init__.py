@@ -3,7 +3,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from datetime import timedelta
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, redirect, url_for
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -93,10 +93,10 @@ def create_app(config_name: str | None = None) -> Flask:
     # Logging
     _setup_logging(app)
 
-    # Health check route
-    @app.route("/health", methods=["GET"])
-    def health_check():
-        return jsonify({"status": "ok", "env": app.config.get("ENV", "unknown")}), 200
+    # Add a root route to redirect to the API health check
+    @app.route("/", methods=["GET"])
+    def index():
+        return redirect(url_for("api.health"))
 
     return app
 
@@ -115,12 +115,16 @@ def _setup_cors(app: Flask) -> None:
 def _register_blueprints(app: Flask) -> None:
     # Import here to avoid circular imports
     try:
-        from .routes import api_bp, mpesa_bp, demo_bp  # All blueprints from main routes.py
+        from .routes import api_bp, mpesa_bp
 
         api_prefix = app.config.get("API_PREFIX", "/api")
         app.register_blueprint(api_bp, url_prefix=api_prefix)
-        app.register_blueprint(demo_bp, url_prefix=api_prefix)  # Demo endpoints under /api
-        app.register_blueprint(mpesa_bp, url_prefix=api_prefix)  # M-Pesa endpoints under /api
+        app.register_blueprint(mpesa_bp, url_prefix=api_prefix)
+
+        # Register demo blueprint only in non-production environments
+        if app.config.get("ENV") != "production":
+            from .routes import demo_bp
+            app.register_blueprint(demo_bp, url_prefix=api_prefix)
     except Exception as e:
         app.logger.warning(f"Routes not registered: {e}")
 
