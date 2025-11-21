@@ -8,7 +8,7 @@ services:
     env: python
     # Tell Render to look in the 'backend' directory for all commands
     rootDir: backend
-    python_version: "3.12"
+    pythonVersion: "3.12"
     plan: free # Optional: specify your plan type, e.g., "starter"
     buildCommand: |
       pip install --upgrade pip
