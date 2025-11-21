@@ -8,7 +8,6 @@ services:
     env: python
     # Tell Render to look in the 'backend' directory for all commands
     rootDir: backend
-    pythonVersion: "3.12"
     plan: free # Optional: specify your plan type, e.g., "starter"
     buildCommand: |
       pip install --upgrade pip
@@ -16,7 +15,7 @@ services:
     # The command to start the Gunicorn server
     # It points to the 'app' variable inside the 'wsgi.py' file.
     # The $PORT variable is automatically provided by Render.
-    startCommand: "gunicorn --workers 4 --bind 0.0.0.0:$PORT wsgi:app"
+    startCommand: "gunicorn --workers 2 --bind 0.0.0.0:$PORT wsgi:app"
     envVars:
       - key: FLASK_ENV
         value: production
@@ -35,6 +34,7 @@ services:
   - type: pserv
     name: shield-ai-database
     plan: free # Optional: specify your plan type
+    databaseName: shield_ai_db
     # You can specify the PostgreSQL version if needed
     # postgresqlVersion: 15
     # Render automatically handles backups and data persistence.
