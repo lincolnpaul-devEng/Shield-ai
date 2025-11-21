@@ -1,0 +1,40 @@
+# This file is used by Render to configure and deploy the services.
+# For more details, see https://render.com/docs/blueprint-spec
+
+services:
+  # The Python (Flask) backend service
+  - type: web
+    name: shield-ai-backend
+    env: python
+    # Tell Render to look in the 'backend' directory for all commands
+    rootDir: backend
+    pythonVersion: "3.12"
+    plan: free # Optional: specify your plan type, e.g., "starter"
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    # The command to start the Gunicorn server
+    # It points to the 'app' variable inside the 'wsgi.py' file.
+    # The $PORT variable is automatically provided by Render.
+    startCommand: "gunicorn --workers 4 --bind 0.0.0.0:$PORT wsgi:app"
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      # The 'DATABASE_URL' is a secret that will be automatically provided
+      # by the PostgreSQL database service defined below.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: shield-ai-database
+          property: connectionString
+      # It's good practice to set a secret key for production.
+      # You should set this value in the Render dashboard under Environment.
+      - key: SECRET_KEY
+        generateValue: true # Render will generate a random value
+
+  # The PostgreSQL database service
+  - type: pserv
+    name: shield-ai-database
+    plan: free # Optional: specify your plan type
+    # You can specify the PostgreSQL version if needed
+    # postgresqlVersion: 15
+    # Render automatically handles backups and data persistence.
