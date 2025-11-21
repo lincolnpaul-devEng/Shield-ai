@@ -21,7 +21,7 @@ void main() {
     final demo = DemoService(api);
     final mpesaSync = MpesaSyncService();
     await mpesaSync.initialize(api);
-    final financialStrategist = FinancialStrategist(apiKey: '');
+    final financialStrategist = FinancialStrategist(api);
     final insightsService = InsightsService();
     await tester.pumpWidget(ShieldAIApp(
       apiService: api,

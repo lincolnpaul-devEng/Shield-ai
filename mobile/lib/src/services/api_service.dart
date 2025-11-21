@@ -263,6 +263,22 @@ class ApiService {
       rethrow;
     }
   }
+
+  /// Ask AI a question about financial planning
+  Future<Map<String, dynamic>> askAI(String userId, String question) async {
+    try {
+      final requestData = {
+        'user_id': userId,
+        'question': question,
+      };
+
+      final response = await post('/ask-ai', requestData);
+      return response;
+    } catch (e) {
+      developer.log('askAI failed: $e', name: 'ApiService', error: e);
+      rethrow;
+    }
+  }
 }
 
 class ApiException implements Exception {

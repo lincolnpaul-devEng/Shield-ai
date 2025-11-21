@@ -74,8 +74,19 @@ def create_app(config_name: str | None = None) -> Flask:
     if config_name is None:
         config_name = os.getenv("FLASK_ENV") or os.getenv("ENV", "development")
 
-    app = Flask(__name__)
+    app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_map.get(config_name, DevelopmentConfig))
+
+    # --- DATABASE URI OVERRIDE FOR PRODUCTION HOSTING (e.g., Render) ---
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        # Render provides a DATABASE_URL that starts with postgres://
+        # but SQLAlchemy requires postgresql://
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql://", 1)
+        app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+    # --- END DATABASE URI OVERRIDE ---
+
 
     # Initialize extensions
     db.init_app(app)

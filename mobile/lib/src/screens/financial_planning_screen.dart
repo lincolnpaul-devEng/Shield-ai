@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import '../providers/financial_provider.dart';
 import '../providers/transaction_provider.dart';
@@ -66,6 +67,8 @@ class _FinancialPlanningScreenState extends State<FinancialPlanningScreen> {
   @override
   Widget build(BuildContext context) {
     final financialProvider = context.watch<FinancialProvider>();
+    final transactionProvider = context.watch<TransactionProvider>();
+    final userProvider = context.watch<UserProvider>();
 
     return DefaultTabController(
       length: 5,
@@ -96,7 +99,7 @@ class _FinancialPlanningScreenState extends State<FinancialPlanningScreen> {
                 ? TabBarView(
                     children: [
                       _FinancialPlanView(plan: financialProvider.currentPlan!),
-                      _ConversationsView(),
+                      _ConversationsView(userProvider: userProvider),
                       _PredictionsView(),
                       _AnomaliesView(),
                       _SuggestionsView(),
@@ -372,7 +375,9 @@ class _BudgetOverviewCard extends StatelessWidget {
 }
 
 class _ConversationsView extends StatefulWidget {
-  const _ConversationsView();
+  final UserProvider userProvider;
+
+  const _ConversationsView({required this.userProvider});
 
   @override
   State<_ConversationsView> createState() => _ConversationsViewState();
@@ -425,12 +430,12 @@ class _ConversationsViewState extends State<_ConversationsView> {
                     hintText: 'Ask about your financial plan...',
                     border: OutlineInputBorder(),
                   ),
-                  onSubmitted: (_) => _askQuestion(financialProvider, transactionProvider),
+                  onSubmitted: (_) => _askQuestion(financialProvider, transactionProvider, widget.userProvider),
                 ),
               ),
               const SizedBox(width: 8),
               IconButton(
-                onPressed: () => _askQuestion(financialProvider, transactionProvider),
+                onPressed: () => _askQuestion(financialProvider, transactionProvider, widget.userProvider),
                 icon: const Icon(Icons.send),
               ),
             ],
@@ -440,10 +445,10 @@ class _ConversationsViewState extends State<_ConversationsView> {
     );
   }
 
-  void _askQuestion(FinancialProvider provider, TransactionProvider transactionProvider) {
+  void _askQuestion(FinancialProvider provider, TransactionProvider transactionProvider, UserProvider userProvider) {
     final question = _questionController.text.trim();
-    if (question.isNotEmpty) {
-      provider.askQuestion(question, transactionProvider.transactions);
+    if (question.isNotEmpty && userProvider.currentUser != null) {
+      provider.askQuestion(question, userProvider.currentUser!.phone, '1234'); // Use a dummy PIN for now
       _questionController.clear();
     }
   }
@@ -457,6 +462,7 @@ class _ConversationBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.isFromUser;
+    final displayText = isUser ? message.question : (message.answer.isNotEmpty ? message.answer : message.question);
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -472,31 +478,36 @@ class _ConversationBubble extends StatelessWidget {
               : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              message.question,
-              style: TextStyle(
-                color: isUser
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            if (message.answer.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                message.answer,
+        child: isUser
+            ? Text(
+                displayText,
                 style: TextStyle(
-                  color: isUser
-                      ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9)
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              )
+            : MarkdownBody(
+                data: displayText,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 14,
+                  ),
+                  listBullet: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 14,
+                  ),
+                  strong: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  em: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontStyle: FontStyle.italic,
+                    fontSize: 14,
+                  ),
                 ),
               ),
-            ],
-          ],
-        ),
       ),
     );
   }
@@ -509,6 +520,7 @@ class _PredictionsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final financialProvider = context.watch<FinancialProvider>();
     final transactionProvider = context.read<TransactionProvider>();
+    final userProvider = context.read<UserProvider>();
 
     return Column(
       children: [

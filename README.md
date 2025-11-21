@@ -241,10 +241,10 @@ Shield AI is proprietary software. See our [License Agreement](LICENSE) for full
 - **[Notice](NOTICE)** - Legal notices and third-party components
 
 ### Contact Information
-- **General Inquiries**: info@shieldai.com
-- **Technical Support**: support@shieldai.com
-- **Licensing**: licensing@shieldai.com
-- **Conduct Issues**: conduct@shieldai.com
+- **General Inquiries**: info@maujihtech.com
+- **Technical Support**: support@maujihtech.com
+- **Licensing**: licensing@maujihtech.com
+- **Conduct Issues**: conduct@maujihtech.com
 
 ---
 

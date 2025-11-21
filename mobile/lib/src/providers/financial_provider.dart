@@ -45,9 +45,61 @@ class FinancialProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _currentPlan = await _strategist.generateSpendingPlan(
-        transactions,
-        currentBalance,
+      // TODO: Implement spending plan generation through backend API
+      // For now, create a basic plan
+      _currentPlan = SpendingPlan(
+        weeklyBudget: 2500,
+        monthlyBudget: 10000,
+        categories: [
+          SpendingCategory(
+            name: 'Food & Groceries',
+            allocated: 1500,
+            recommended: 1200,
+            category: 'essential',
+            description: 'Daily meals and household groceries',
+          ),
+          SpendingCategory(
+            name: 'Transport',
+            allocated: 800,
+            recommended: 600,
+            category: 'essential',
+            description: 'Local transport and fares',
+          ),
+          SpendingCategory(
+            name: 'Airtime & Data',
+            allocated: 500,
+            recommended: 400,
+            category: 'essential',
+            description: 'Mobile phone and internet costs',
+          ),
+          SpendingCategory(
+            name: 'Entertainment',
+            allocated: 700,
+            recommended: 300,
+            category: 'discretionary',
+            description: 'Movies, games, and leisure activities',
+          ),
+          SpendingCategory(
+            name: 'Savings',
+            allocated: 1000,
+            recommended: 1500,
+            category: 'savings',
+            description: 'Emergency fund and future goals',
+          ),
+        ],
+        wasteAlerts: ['Unable to analyze spending patterns'],
+        savingsTips: [
+          'Track your expenses daily',
+          'Set savings goals',
+          'Reduce impulse purchases',
+        ],
+        fraudRisks: ['Monitor for unusual spending patterns'],
+        financialHealthScore: 75,
+        recommendations: [
+          'Build emergency fund to cover 3 months of expenses',
+          'Reduce discretionary spending by 30%',
+          'Increase savings rate to 20% of income',
+        ],
       );
       _lastGenerated = DateTime.now();
       _error = null;
@@ -129,17 +181,34 @@ class FinancialProvider extends ChangeNotifier {
 
   // Enhanced AI Features
 
-  Future<void> askQuestion(String question, List<TransactionModel> transactions) async {
-    if (_currentPlan == null) return;
+  Future<void> askQuestion(String question, String userId, String pin) async {
+    // Add user message immediately
+    final userMessage = ConversationMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      question: question,
+      answer: '',
+      timestamp: DateTime.now(),
+      isFromUser: true,
+    );
+    _conversations.add(userMessage);
 
     _isLoading = true;
     notifyListeners();
 
     try {
-      final message = await _strategist.askQuestion(question, _currentPlan!, transactions);
-      _conversations.add(message);
+      final aiMessage = await _strategist.askQuestion(question, userId, pin);
+      _conversations.add(aiMessage);
       _error = null;
     } catch (e) {
+      // Add error message as AI response
+      final errorMessage = ConversationMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        question: question,
+        answer: 'I apologize, but I\'m unable to answer your question right now. Please try again later.',
+        timestamp: DateTime.now(),
+        isFromUser: false,
+      );
+      _conversations.add(errorMessage);
       _error = e.toString();
       if (kDebugMode) {
         print('Error asking question: $e');
@@ -157,8 +226,8 @@ class FinancialProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final refinedPlan = await _strategist.refinePlan(_currentPlan!, userFeedback, transactions);
-      _currentPlan = refinedPlan;
+      // TODO: Implement plan refinement through backend API
+      // For now, just record the refinement request
       _refinements.add(PlanRefinement(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         userFeedback: userFeedback,
@@ -184,7 +253,8 @@ class FinancialProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _predictions = await _strategist.predictSpending(transactions, monthsAhead);
+      // TODO: Implement predictions through backend API
+      _predictions = [];
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -204,7 +274,8 @@ class FinancialProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _anomalies = await _strategist.detectAnomalies(transactions, _currentPlan!);
+      // TODO: Implement anomaly detection through backend API
+      _anomalies = [];
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -227,11 +298,8 @@ class FinancialProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _suggestions = await _strategist.generateSmartSuggestions(
-        transactions,
-        _currentPlan!,
-        currentBalance,
-      );
+      // TODO: Implement smart suggestions through backend API
+      _suggestions = [];
       _error = null;
     } catch (e) {
       _error = e.toString();

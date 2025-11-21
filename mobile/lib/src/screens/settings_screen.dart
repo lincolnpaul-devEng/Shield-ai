@@ -212,7 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             '• Notifications: Allows instant alerts to block suspicious transactions.\n'
             '• Location: Detects unusual locations compared to your normal usage.\n\n'
             'Your privacy matters: data is protected and used only to keep you safe.\n\n'
-            'Made with ❤️ with Lincoln',
+            'Proudly crafted by Lincoln Paul 😎',
           ),
         ],
       ),

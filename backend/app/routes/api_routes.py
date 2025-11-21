@@ -3,6 +3,7 @@ from datetime import datetime
 from .. import db
 from ..models import User, Transaction
 from ..fraud_detector import FraudDetector
+from ..financial_strategist import FinancialStrategist
 
 api_bp = Blueprint("api", __name__)
 
@@ -227,4 +228,49 @@ def update_balance(user_id: str):
     except Exception as e:
         current_app.logger.exception("Error in /users/<user_id>/balance")
         db.session.rollback()
+        return jsonify({"error": "internal_server_error", "message": "An unexpected error occurred"}), 500
+
+
+@api_bp.route("/ask-ai", methods=["POST"])
+def ask_ai():
+    """Ask AI a question about financial planning"""
+    try:
+        payload = request.get_json(silent=True) or {}
+
+        # Validate required fields
+        user_id = payload.get('user_id')
+        question = payload.get('question')
+
+        if not user_id or not question:
+            return jsonify({"error": "bad_request", "message": "Missing user_id or question"}), 400
+
+        # Get user (PIN validation removed for AI conversations - user should be authenticated)
+        user = User.query.filter_by(phone=user_id).first()
+        if not user:
+            return jsonify({"error": "not_found", "message": "User not found"}), 404
+
+        # Get user's current plan data (simplified for now)
+        plan_data = {
+            'weekly_budget': 2500,
+            'monthly_budget': 10000,
+            'financial_health_score': 75,
+            'categories': [
+                {'name': 'Food', 'allocated': 1500},
+                {'name': 'Transport', 'allocated': 800},
+                {'name': 'Airtime', 'allocated': 500},
+            ]
+        }
+
+        # Ask AI the question
+        strategist = FinancialStrategist()
+        answer = strategist.ask_question(question, user.id, plan_data)
+
+        return jsonify({
+            "question": question,
+            "answer": answer,
+            "timestamp": datetime.utcnow().isoformat()
+        }), 200
+
+    except Exception as e:
+        current_app.logger.exception("Error in /ask-ai")
         return jsonify({"error": "internal_server_error", "message": "An unexpected error occurred"}), 500

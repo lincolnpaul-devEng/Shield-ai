@@ -75,9 +75,7 @@ Future<void> main() async {
   await mpesaSyncService.initialize(apiService);
 
   // Initialize financial strategist
-  final financialStrategist = FinancialStrategist(
-    apiKey: const String.fromEnvironment('OPENROUTER_API_KEY', defaultValue: ''),
-  );
+  final financialStrategist = FinancialStrategist(apiService);
 
   // Initialize insights service
   final insightsService = InsightsService();
