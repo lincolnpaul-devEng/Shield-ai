@@ -24,4 +24,5 @@ services:
   # The PostgreSQL database service
   - type: pserv
     name: shield-ai-database
+    runtime: postgresql
     plan: free
