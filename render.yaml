@@ -21,7 +21,9 @@ services:
       - key: SECRET_KEY
         generateValue: true
 
-  # The PostgreSQL database service
-  - type: postgresql
-    name: shield-ai-database
+databases:
+  # The PostgreSQL database
+  - name: shield-ai-database
+    databaseName: shieldai_dev
+    user: shieldai_user
     plan: free
