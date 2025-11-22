@@ -22,6 +22,6 @@ services:
         generateValue: true
 
   # The PostgreSQL database service
-  - type: postgres
+  - type: postgresql
     name: shield-ai-database
     plan: free
