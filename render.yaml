@@ -6,7 +6,7 @@ services:
   - type: web
     name: shield-ai-backend
     env: python
-    # Tell Render to look in the 'backend' directory for all commands
+    runtime: python
     rootDir: backend
     plan: free
     buildCommand: |
@@ -14,8 +14,6 @@ services:
       pip install -r requirements.txt
     startCommand: "gunicorn --workers 2 --bind 0.0.0.0:$PORT wsgi:app"
     envVars:
-      - key: FLASK_ENV
-        value: production
       - key: DATABASE_URL
         fromDatabase:
           name: shield-ai-database
@@ -27,5 +25,3 @@ services:
   - type: pserv
     name: shield-ai-database
     plan: free
-    # Render automatically creates a database with the same name as the service
-    # or you can specify it via environment variables in your app
