@@ -19,7 +19,7 @@ depends_on = None
 def upgrade():
     # Drop the faulty check constraint and create a new, correct one.
     # The table name is 'mpesa_transaction'
-    with op.batch_alter_table('mpesa_transaction', schema=None) as batch_op:
+    with op.batch_alter_table('mpesa_transactions', schema=None) as batch_op:
         try:
             batch_op.drop_constraint('mpesa_status_check', type_='check')
         except Exception as e:
@@ -34,7 +34,7 @@ def upgrade():
 
 def downgrade():
     # Revert to the old, faulty check constraint.
-    with op.batch_alter_table('mpesa_transaction', schema=None) as batch_op:
+    with op.batch_alter_table('mpesa_transactions', schema=None) as batch_op:
         batch_op.drop_constraint('mpesa_status_check', type_='check')
         batch_op.create_check_constraint(
             'mpesa_status_check',
