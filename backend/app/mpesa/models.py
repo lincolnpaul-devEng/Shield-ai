@@ -36,7 +36,7 @@ class MpesaTransaction(db.Model):
     __table_args__ = (
         db.CheckConstraint('amount > 0', name='mpesa_amount_positive'),
         db.CheckConstraint('length(phone_number) >= 10', name='mpesa_phone_length_check'),
-        db.CheckConstraint('status IN ("pending", "completed", "failed", "cancelled")', name='mpesa_status_check'),
+        db.CheckConstraint("status IN ('pending', 'completed', 'failed', 'cancelled')”, name='mpesa_status_check'),
     )
 
     def to_dict(self):

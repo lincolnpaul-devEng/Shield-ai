@@ -36,7 +36,7 @@ def upgrade():
     sa.Column('callback_data', sa.Text(), nullable=True),
     sa.CheckConstraint('amount > 0', name='mpesa_amount_positive'),
     sa.CheckConstraint('length(phone_number) >= 10', name='mpesa_phone_length_check'),
-    sa.CheckConstraint('status IN ("pending", "completed", "failed", "cancelled")', name='mpesa_status_check'),
+    sa.CheckConstraint("status IN ('pending', 'completed', 'failed', 'cancelled')", name='mpesa_status_check'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
