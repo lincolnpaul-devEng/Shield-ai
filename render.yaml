@@ -12,6 +12,7 @@ services:
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
+      flask db upgrade
     startCommand: "gunicorn --workers 2 --bind 0.0.0.0:$PORT wsgi:app"
     envVars:
       - key: DATABASE_URL
