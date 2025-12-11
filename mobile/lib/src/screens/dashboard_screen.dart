@@ -8,6 +8,8 @@ import '../providers/fraud_provider.dart';
 import '../providers/financial_provider.dart';
 import '../models/transaction.dart';
 import '../models/spending_plan.dart';
+import '../utils/snackbar_helper.dart';
+import 'main_navigation.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -158,15 +160,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _onNewTx() {
-    Navigator.pushNamed(context, '/send-money');
+    _switchToTab(1); // Send Money tab
   }
 
   void _onHistory() {
-    Navigator.pushNamed(context, '/transactions');
+    _switchToTab(2); // Transactions tab
   }
 
   void _onPlanning() {
-    Navigator.pushNamed(context, '/financial-planning');
+    _switchToTab(3); // Financial Planning tab
+  }
+
+  void _switchToTab(int index) {
+    final mainNavState = MainNavigation.of(context);
+    if (mainNavState != null) {
+      mainNavState.switchToTab(index);
+    } else {
+      // Fallback: try to navigate to the route (for when not in MainNavigation)
+      final routes = ['/dashboard', '/send-money', '/transactions', '/financial-planning', '/settings'];
+      if (index < routes.length) {
+        Navigator.pushNamed(context, routes[index]);
+      }
+    }
   }
 
   void _syncBalance() {
@@ -334,7 +349,7 @@ class _FinancialHealthCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
+                color: color.withAlpha(20),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -610,7 +625,7 @@ class _QuickAccessCard extends StatelessWidget {
                 Expanded(
                   child: _QuickAccessButton(
                     icon: Icons.history,
-                    label: 'View All\\nTransactions',
+                    label: 'View All\nTransactions',
                     subtitle: '$transactionCount total',
                     onPressed: onViewAllTransactions,
                   ),
@@ -619,7 +634,7 @@ class _QuickAccessCard extends StatelessWidget {
                 Expanded(
                   child: _QuickAccessButton(
                     icon: Icons.account_balance_wallet,
-                    label: hasPlan ? 'Update\\nPlan' : 'Create\\nPlan',
+                    label: hasPlan ? 'Update\nPlan' : 'Create\nPlan',
                     subtitle: hasPlan ? 'AI-powered' : 'Get started',
                     onPressed: onViewPlanning,
                   ),
@@ -865,17 +880,13 @@ class _BalanceSyncDialogState extends State<_BalanceSyncDialog> {
     final pin = _pinController.text.trim();
 
     if (balanceText.isEmpty || pin.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter both balance and PIN')),
-      );
+      SnackbarHelper.showError(context, 'Please enter both balance and PIN');
       return;
     }
 
     final balance = double.tryParse(balanceText);
     if (balance == null || balance < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid balance')),
-      );
+      SnackbarHelper.showError(context, 'Please enter a valid, non-negative balance');
       return;
     }
 
@@ -887,18 +898,14 @@ class _BalanceSyncDialogState extends State<_BalanceSyncDialog> {
 
       if (success && mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Balance synced successfully')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(userProvider.error ?? 'Failed to sync balance')),
-        );
+        SnackbarHelper.showSuccess(context, 'Balance synced successfully!');
+      } else if (mounted) {
+        SnackbarHelper.showError(context, userProvider.error ?? 'Failed to sync balance. Please try again.');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
+      if (mounted) {
+        SnackbarHelper.showError(context, 'An unexpected error occurred. Please try again later.');
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

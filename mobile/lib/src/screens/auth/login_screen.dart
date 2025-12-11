@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
+import '../../utils/snackbar_helper.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,7 +14,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _phoneController = TextEditingController();
   final _pinController = TextEditingController();
   bool _isLoading = false;
-  String? _error;
+  bool _pinVisible = false;
 
   @override
   void dispose() {
@@ -27,33 +28,37 @@ class _LoginScreenState extends State<LoginScreen> {
     final pin = _pinController.text.trim();
 
     if (phone.isEmpty) {
-      setState(() => _error = 'Please enter your phone number');
+      SnackbarHelper.showError(context, 'Please enter your phone number');
       return;
     }
 
     if (pin.isEmpty) {
-      setState(() => _error = 'Please enter your MPesa PIN');
+      SnackbarHelper.showError(context, 'Please enter your MPesa PIN');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      final fullPhone = phone.startsWith('+254') ? phone : '+254$phone';
+      final fullPhone = phone.startsWith('+254') ? phone : '+254${phone}';
 
       final userProvider = context.read<UserProvider>();
       final success = await userProvider.loginUser(fullPhone, pin);
 
       if (success && mounted) {
-        Navigator.pushReplacementNamed(context, '/dashboard');
-      } else {
-        setState(() => _error = userProvider.error ?? 'Login failed');
+        SnackbarHelper.showSuccess(context, 'Login successful');
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/dashboard');
+          }
+        });
+      } else if (mounted) {
+        SnackbarHelper.showError(context, userProvider.error ?? 'Login failed. Please check your credentials.');
       }
     } catch (e) {
-      setState(() => _error = 'Login failed: ${e.toString()}');
+      if (mounted) {
+        SnackbarHelper.showError(context, 'An unexpected error occurred. Please try again later.');
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -144,42 +149,36 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   filled: true,
                   fillColor: Theme.of(context).colorScheme.surface,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _pinVisible ? Icons.visibility_off : Icons.visibility,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _pinVisible = !_pinVisible;
+                      });
+                    },
+                  ),
                 ),
-                obscureText: true,
+                obscureText: !_pinVisible,
                 keyboardType: TextInputType.number,
                 maxLength: 4,
                 buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
 
-              if (_error != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _error!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+              Text(
+                'Your PIN is encrypted and never stored.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(height: 16),
-              ],
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 16),
 
               SizedBox(
                 width: double.infinity,
@@ -203,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         )
                       : const Text(
-                          'Login & Protect My Account',
+                          'Login',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),
@@ -240,10 +239,10 @@ class _LoginScreenState extends State<LoginScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                    color: Theme.of(context).colorScheme.outline,
                   ),
                 ),
                 child: Column(
@@ -268,7 +267,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       'Shield AI analyzes your transaction patterns to detect fraud in real-time. Your PIN and data are never stored on our servers.',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 14,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),

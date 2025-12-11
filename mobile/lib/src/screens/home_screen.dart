@@ -15,10 +15,10 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(user != null ? 'Hello ${user.phone}' : 'Welcome'),
+            Text(user != null ? 'Hello ${user.firstName}' : 'Welcome'),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => Navigator.pushNamed(context, '/transactions'),
+              onPressed: () => Navigator.pushNamed(context, '/main', arguments: 2), // Transactions tab
               child: const Text('View Transactions'),
             )
           ],

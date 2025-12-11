@@ -67,6 +67,21 @@ class ApiService {
     return _decode(streamed);
   }
 
+  Future<Map<String, dynamic>> put(String path, Map<String, dynamic> body) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final request = http.Request('PUT', uri);
+    request.body = jsonEncode(body);
+    final streamed = await _send(request);
+    return _decode(streamed);
+  }
+
+  Future<Map<String, dynamic>> delete(String path) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final request = http.Request('DELETE', uri);
+    final streamed = await _send(request);
+    return _decode(streamed);
+  }
+
   Future<http.StreamedResponse> _send(http.BaseRequest originalRequest, {int? retryCount}) async {
     final attempts = retryCount ?? _maxRetries;
 
@@ -265,20 +280,26 @@ class ApiService {
   }
 
   /// Ask AI a question about financial planning
-  Future<Map<String, dynamic>> askAI(String userId, String question) async {
-    try {
-      final requestData = {
-        'user_id': userId,
-        'question': question,
-      };
+  /// Ask AI a question about financial planning (M-Pesa Max)
+Future<Map<String, dynamic>> askAI(String userId, String question, {List<Map<String, dynamic>>? conversationHistory}) async {
+  try {
+    final Map<String, dynamic> requestData = {
+      'user_id': userId,
+      'query': question,  // M-Pesa Max uses 'query' instead of 'question'
+    };
 
-      final response = await post('/ask-ai', requestData);
-      return response;
-    } catch (e) {
-      developer.log('askAI failed: $e', name: 'ApiService', error: e);
-      rethrow;
+    // Add conversation history if provided
+    if (conversationHistory != null && conversationHistory.isNotEmpty) {
+      requestData['conversation_history'] = conversationHistory;
     }
+
+    final response = await post('/mpesa-max', requestData);  // Use M-Pesa Max endpoint
+    return response;
+  } catch (e) {
+    developer.log('askAI failed: $e', name: 'ApiService', error: e);
+    rethrow;
   }
+}
 }
 
 class ApiException implements Exception {

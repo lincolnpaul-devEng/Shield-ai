@@ -16,7 +16,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _pinController = TextEditingController();
   final _confirmPinController = TextEditingController();
   bool _isLoading = false;
-  String? _error;
+  bool _pinVisible = false;
+  bool _confirmPinVisible = false;
 
   @override
   void dispose() {
@@ -27,6 +28,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  String _getUserFriendlyErrorMessage(String error) {
+    if (error.contains('TimeoutException') || error.contains('Future not completed')) {
+      return 'Connection timeout. Please check your internet connection and try again.';
+    }
+    if (error.contains('SocketException') || error.contains('Failed host lookup')) {
+      return 'Unable to connect to server. Please check your internet connection.';
+    }
+    if (error.contains('400') || error.contains('Bad Request')) {
+      return 'Invalid information provided. Please check your details.';
+    }
+    if (error.contains('409') || error.contains('Conflict')) {
+      return 'An account with this phone number already exists.';
+    }
+    if (error.contains('500') || error.contains('Internal Server Error')) {
+      return 'Server error. Please try again later.';
+    }
+    // For any other error, return a generic message
+    return 'Something went wrong. Please try again.';
+  }
+
   Future<void> _register() async {
     final fullName = _fullNameController.text.trim();
     final phone = _phoneController.text.trim();
@@ -34,33 +55,122 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final confirmPin = _confirmPinController.text.trim();
 
     if (fullName.isEmpty) {
-      setState(() => _error = 'Please enter your full name');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(child: Text('Please enter your full name')),
+            ],
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: Duration(seconds: 4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(8),
+              bottomRight: Radius.circular(8),
+            ),
+          ),
+        ),
+      );
       return;
     }
 
     if (phone.isEmpty) {
-      setState(() => _error = 'Please enter your phone number');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(child: Text('Please enter your phone number')),
+            ],
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: Duration(seconds: 4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(8),
+              bottomRight: Radius.circular(8),
+            ),
+          ),
+        ),
+      );
       return;
     }
 
     if (pin.isEmpty) {
-      setState(() => _error = 'Please enter your M-Pesa PIN');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(child: Text('Please enter your M-Pesa PIN')),
+            ],
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: Duration(seconds: 4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(8),
+              bottomRight: Radius.circular(8),
+            ),
+          ),
+        ),
+      );
       return;
     }
 
     if (pin != confirmPin) {
-      setState(() => _error = 'PINs do not match');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(child: Text('PINs do not match')),
+            ],
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: Duration(seconds: 4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(8),
+              bottomRight: Radius.circular(8),
+            ),
+          ),
+        ),
+      );
       return;
     }
 
     if (pin.length != 4) {
-      setState(() => _error = 'M-Pesa PIN must be 4 digits');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(child: Text('M-Pesa PIN must be 4 digits')),
+            ],
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: Duration(seconds: 4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(8),
+              bottomRight: Radius.circular(8),
+            ),
+          ),
+        ),
+      );
       return;
     }
 
     setState(() {
       _isLoading = true;
-      _error = null;
     });
 
     try {
@@ -80,10 +190,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (success && mounted) {
         Navigator.pushReplacementNamed(context, '/login');
       } else {
-        setState(() => _error = userProvider.error ?? 'Registration failed');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(child: Text(_getUserFriendlyErrorMessage(userProvider.error ?? 'Registration failed'))),
+                ],
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              duration: Duration(seconds: 4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(8),
+                  bottomRight: Radius.circular(8),
+                ),
+              ),
+            ),
+          );
+        }
       }
     } catch (e) {
-      setState(() => _error = 'Registration failed: ${e.toString()}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.warning, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(child: Text(_getUserFriendlyErrorMessage(e.toString()))),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            duration: Duration(seconds: 3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(8),
+                bottomRight: Radius.circular(8),
+              ),
+            ),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -189,8 +339,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   filled: true,
                   fillColor: Theme.of(context).colorScheme.surface,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _pinVisible ? Icons.visibility_off : Icons.visibility,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _pinVisible = !_pinVisible;
+                      });
+                    },
+                  ),
                 ),
-                obscureText: true,
+                obscureText: !_pinVisible,
                 keyboardType: TextInputType.number,
                 maxLength: 4,
                 buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
@@ -208,42 +369,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   filled: true,
                   fillColor: Theme.of(context).colorScheme.surface,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _confirmPinVisible ? Icons.visibility_off : Icons.visibility,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _confirmPinVisible = !_confirmPinVisible;
+                      });
+                    },
+                  ),
                 ),
-                obscureText: true,
+                obscureText: !_confirmPinVisible,
                 keyboardType: TextInputType.number,
                 maxLength: 4,
                 buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
               ),
 
               const SizedBox(height: 16),
-
-              if (_error != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _error!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
 
               SizedBox(
                 width: double.infinity,
@@ -267,7 +411,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                         )
                       : const Text(
-                          'Create Account & Start Protection',
+                          'Register',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),
@@ -286,7 +430,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   TextButton(
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pushReplacementNamed(context, '/login');
                     },
                     child: Text(
                       'Login Here',
@@ -332,7 +476,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Text(
                       'By registering, you agree to our terms of service. Shield AI only analyzes transaction patterns and never stores your M-Pesa PIN.',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 14,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'src/theme/app_colors.dart';
 import 'src/providers/demo_provider.dart';
 import 'src/providers/financial_provider.dart';
 import 'src/providers/fraud_provider.dart';
@@ -120,7 +121,7 @@ class ShieldAIApp extends StatelessWidget {
         ),
 
         // Financial planning provider
-        ChangeNotifierProvider(create: (_) => FinancialProvider(financialStrategist)),
+        ChangeNotifierProvider(create: (_) => FinancialProvider(financialStrategist, apiService)),
 
         // Insights provider
         ChangeNotifierProvider(create: (_) => InsightsProvider(insightsService)),
@@ -159,12 +160,12 @@ class ShieldAIApp extends StatelessWidget {
 
   ThemeData _buildLightTheme() {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: Colors.green,
+      seedColor: AppColors.primary,
       brightness: Brightness.light,
-      primary: const Color(0xFF007B3E), // Kenyan green
-      secondary: const Color(0xFFFF6B35), // Orange accent
-      error: const Color(0xFFD32F2F),
-      surface: Colors.white,
+      primary: AppColors.primary,
+      secondary: AppColors.accent,
+      error: AppColors.error,
+      surface: AppColors.background,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: Colors.black87,
@@ -174,6 +175,22 @@ class ShieldAIApp extends StatelessWidget {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+
+      // Text theme
+      textTheme: TextTheme(
+        headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+        headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+        titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+        titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
+        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
+        bodySmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
+        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
+        labelMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
+        labelSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
+      ),
 
       // App bar theme
       appBarTheme: AppBarTheme(
@@ -236,21 +253,37 @@ class ShieldAIApp extends StatelessWidget {
 
   ThemeData _buildDarkTheme() {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: Colors.green,
+      seedColor: AppColors.primary,
       brightness: Brightness.dark,
-      primary: const Color(0xFF4CAF50),
-      secondary: const Color(0xFFFF8A65),
-      error: const Color(0xFFEF5350),
+      primary: AppColors.primary,
+      secondary: AppColors.accent,
+      error: AppColors.error,
       surface: const Color(0xFF1E1E1E),
-      onPrimary: Colors.black,
-      onSecondary: Colors.black,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
       onSurface: Colors.white,
-      onError: Colors.black,
+      onError: Colors.white,
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+
+      // Text theme
+      textTheme: TextTheme(
+        headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+        headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+        titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+        titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
+        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
+        bodySmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
+        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
+        labelMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
+        labelSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
+      ),
 
       // Similar customizations for dark theme
       appBarTheme: AppBarTheme(

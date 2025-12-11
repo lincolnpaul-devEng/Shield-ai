@@ -8,7 +8,14 @@ import 'financial_planning_screen.dart';
 import 'settings_screen.dart';
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
+  final int initialIndex;
+
+  const MainNavigation({super.key, this.initialIndex = 0});
+
+  // Static method to access the state from anywhere
+  static _MainNavigationState? of(BuildContext context) {
+    return context.findAncestorStateOfType<_MainNavigationState>();
+  }
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
@@ -25,10 +32,25 @@ class _MainNavigationState extends State<MainNavigation> {
     SettingsScreen(),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  // Public method to switch tabs programmatically
+  void switchToTab(int index) {
+    if (index >= 0 && index < _screens.length) {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   @override

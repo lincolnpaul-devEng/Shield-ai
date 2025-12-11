@@ -2,13 +2,17 @@ import 'package:flutter/foundation.dart';
 import '../models/spending_plan.dart';
 import '../models/transaction.dart';
 import '../models/financial_enhancements.dart';
+import '../models/user_budget_plan.dart';
 import '../services/financial_strategist.dart';
+import '../services/api_service.dart';
 
 class FinancialProvider extends ChangeNotifier {
   final FinancialStrategist _strategist;
+  final ApiService _apiService;
 
   SpendingPlan? _currentPlan;
   bool _isLoading = false;
+  bool _isTyping = false;
   String? _error;
   DateTime? _lastGenerated;
 
@@ -19,11 +23,17 @@ class FinancialProvider extends ChangeNotifier {
   List<SmartSuggestion> _suggestions = [];
   List<PlanRefinement> _refinements = [];
 
-  FinancialProvider(this._strategist);
+  // User budget plans
+  List<UserBudgetPlan> _userPlans = [];
+  UserBudgetPlan? _activeUserPlan;
+  List<BudgetTemplate> _budgetTemplates = [];
+
+  FinancialProvider(this._strategist, this._apiService);
 
   // Getters
   SpendingPlan? get currentPlan => _currentPlan;
   bool get isLoading => _isLoading;
+  bool get isTyping => _isTyping;
   String? get error => _error;
   DateTime? get lastGenerated => _lastGenerated;
   bool get hasPlan => _currentPlan != null;
@@ -34,6 +44,12 @@ class FinancialProvider extends ChangeNotifier {
   List<SpendingAnomaly> get anomalies => _anomalies;
   List<SmartSuggestion> get suggestions => _suggestions;
   List<PlanRefinement> get refinements => _refinements;
+
+  // User budget plan getters
+  List<UserBudgetPlan> get userPlans => _userPlans;
+  UserBudgetPlan? get activeUserPlan => _activeUserPlan;
+  List<BudgetTemplate> get budgetTemplates => _budgetTemplates;
+  bool get hasUserPlan => _activeUserPlan != null;
 
   /// Generate a new spending plan based on transaction history
   Future<void> generateSpendingPlan(
@@ -191,8 +207,7 @@ class FinancialProvider extends ChangeNotifier {
       isFromUser: true,
     );
     _conversations.add(userMessage);
-
-    _isLoading = true;
+    _isTyping = true;
     notifyListeners();
 
     try {
@@ -214,7 +229,7 @@ class FinancialProvider extends ChangeNotifier {
         print('Error asking question: $e');
       }
     } finally {
-      _isLoading = false;
+      _isTyping = false;
       notifyListeners();
     }
   }
@@ -336,6 +351,164 @@ class FinancialProvider extends ChangeNotifier {
 
   void clearAnomalies() {
     _anomalies.clear();
+    notifyListeners();
+  }
+
+  // User Budget Plan Methods
+
+  Future<void> loadUserPlans(String userId, String pin) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.get('/users/$userId/budget-plans?pin=$pin');
+      final plansData = response['plans'] as List;
+      _userPlans = plansData.map((plan) => UserBudgetPlan.fromJson(plan)).toList();
+
+      // Find active plan
+      _activeUserPlan = _userPlans.where((plan) => plan.isActive).firstOrNull;
+
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+      if (kDebugMode) {
+        print('Error loading user plans: $e');
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> createUserPlan(UserBudgetPlan plan, String userId, String pin) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final planData = plan.toJson();
+      planData['pin'] = pin;
+
+      final response = await _apiService.post('/users/$userId/budget-plans', planData);
+      final createdPlan = UserBudgetPlan.fromJson(response);
+
+      _userPlans.add(createdPlan);
+      if (createdPlan.isActive) {
+        _activeUserPlan = createdPlan;
+      }
+
+      _error = null;
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      if (kDebugMode) {
+        print('Error creating user plan: $e');
+      }
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateUserPlan(UserBudgetPlan plan, String userId, String pin) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final planData = plan.toJson();
+      planData['pin'] = pin;
+
+      final response = await _apiService.put('/users/$userId/budget-plans/${plan.id}', planData);
+      final updatedPlan = UserBudgetPlan.fromJson(response);
+
+      final index = _userPlans.indexWhere((p) => p.id == plan.id);
+      if (index != -1) {
+        _userPlans[index] = updatedPlan;
+        if (updatedPlan.isActive) {
+          _activeUserPlan = updatedPlan;
+        } else if (_activeUserPlan?.id == plan.id) {
+          _activeUserPlan = null;
+        }
+      }
+
+      _error = null;
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      if (kDebugMode) {
+        print('Error updating user plan: $e');
+      }
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteUserPlan(String planId, String userId, String pin) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _apiService.delete('/users/$userId/budget-plans/$planId?pin=$pin');
+
+      _userPlans.removeWhere((plan) => plan.id == planId);
+      if (_activeUserPlan?.id == planId) {
+        _activeUserPlan = null;
+      }
+
+      _error = null;
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      if (kDebugMode) {
+        print('Error deleting user plan: $e');
+      }
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadBudgetTemplates() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.get('/budget-templates');
+      final templatesData = response['templates'] as List;
+      _budgetTemplates = templatesData.map((template) => BudgetTemplate.fromJson(template)).toList();
+
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+      if (kDebugMode) {
+        print('Error loading budget templates: $e');
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void setActivePlan(String planId) {
+    final plan = _userPlans.where((p) => p.id == planId).firstOrNull;
+    if (plan != null) {
+      _activeUserPlan = plan;
+      notifyListeners();
+    }
+  }
+
+  void clearUserPlans() {
+    _userPlans.clear();
+    _activeUserPlan = null;
+    _budgetTemplates.clear();
     notifyListeners();
   }
 }

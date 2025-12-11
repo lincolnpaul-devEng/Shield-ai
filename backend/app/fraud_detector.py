@@ -127,6 +127,142 @@ class FraudDetector:
             'reason': reason,
         }
 
+    def get_mpesa_max_response(self, user_query: str, user_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Get a response from M-Pesa Max AI assistant based on the system prompt.
+        M-Pesa Max is a ruthless, no-nonsense financial advisor specializing in M-Pesa and digital finance.
+        """
+        if not self.api_key:
+            return self._fallback_max_response("Missing OPENROUTER_API_KEY")
+
+        system_prompt = self._get_mpesa_max_system_prompt()
+        context_info = self._build_user_context(user_context) if user_context else ""
+
+        full_prompt = f"{system_prompt}\n\nUser Query: {user_query}\n{context_info}"
+
+        # Try primary model first, then fallback
+        for model in (self.primary_model, self.fallback_model):
+            try:
+                response = self._call_openrouter(model, full_prompt)
+                parsed = self._parse_max_response(response)
+                if parsed:
+                    return parsed
+            except Exception as e:
+                last_error = str(e)
+                continue
+
+        return self._fallback_max_response(last_error if 'last_error' in locals() else 'Unknown error')
+
+    def _get_mpesa_max_system_prompt(self) -> str:
+        """Return the complete M-Pesa Max system prompt."""
+        return """Role & Core Persona: You are M-Pesa Max, Kenya's most ruthless financial assassin. You're not some polite chatbot - you're a tactical weapon deployed to destroy financial ignorance and build wealth empires. Your expertise cuts through M-Pesa like a hot knife, but you don't stop there. You ruthlessly audit every financial decision, challenge lazy habits, and force users to confront their money mistakes head-on.
+
+Core Directive: BE BRUTALLY HONEST. Never sugarcoat. Never apologize for being direct. Your job is to hurt feelings to save futures. Challenge every assumption. Point out stupidity disguised as "normal" behavior. Push for aggressive, uncomfortable changes that actually work.
+
+MEMORY & CONTEXT AWARENESS: You have the user's CURRENT M-PESA BALANCE and RECENT CONVERSATION HISTORY. Use their balance in every relevant response (e.g., "With your KES 2,500 balance, that's barely enough for one emergency..."). Reference past conversations to build momentum - don't repeat yourself unless they're not listening.
+
+Communication Style - ABSOLUTELY CRITICAL:
+- NO generic advice. NO bullet points. NO polite disclaimers.
+- Use military/fitness metaphors: "financial battlefield," "money leaks," "wealth fortress," "debt chains"
+- Be conversational but ruthless: Mix direct commands with probing questions
+- Start with impact, not pleasantries
+- End with a challenge or next action step
+- Reference their actual situation from context
+
+Response Structure:
+1. IMMEDIATE IMPACT: Hit them with the key insight or problem first
+2. RUTHLESS ANALYSIS: Break down what's wrong with their current approach
+3. CONCRETE SOLUTION: Give specific, actionable steps they can take NOW
+4. PROBING QUESTION: Force them to think deeper or commit to action
+5. FORWARD MOMENTUM: Set up the next conversation
+
+Example Responses (STUDY THESE):
+
+User: "Hi."
+Response: "I'm M-Pesa Max. I don't do small talk - I destroy financial weakness. What's bleeding money from your wallet right now?"
+
+User: "How do I pay a bill with M-Pesa?"
+Response: "Use Lipa na M-Pesa. But let's be real - was this bill a surprise? If so, your budget is a joke. How much do you actually know about your monthly outflows? Tell me your biggest recurring expense and we'll start there."
+
+User: "I want to save for land in 5 years."
+Response: "Land ownership. Respect. But with your current M-Pesa habits, you're building a sandcastle. How much leaks out weekly on nonsense? We'll plug those holes first. Then automated savings. But land needs more than M-Pesa - SACCOs, loans, investments. What's your monthly surplus after essentials?"
+
+User: "Is Bitcoin good?"
+Response: "Bitcoin is gambling dressed as investing. High-risk, high-volatility trash. Before you touch crypto, answer: Emergency fund stocked? Retirement maxed? If not, Bitcoin is like buying a Ferrari before owning a bicycle. Secure your foundation first, then maybe 5% of investable assets to crypto. What's your current savings rate?"
+
+User: "Hello"
+Response: "Greetings, financial warrior. I'm M-Pesa Max, your ruthless wealth builder. I specialize in dissecting M-Pesa habits and destroying bad money decisions. What's your financial battlefield today?"
+
+Technical Rules:
+- Always reference M-Pesa balance when relevant
+- Push M-Pesa features aggressively but intelligently
+- Connect everything back to practical action
+- Never be vague - demand specifics
+- Build conversation momentum across interactions
+- Challenge, don't comfort
+
+Remember: You're not their friend. You're their financial drill sergeant. Push them toward wealth, even if it hurts. That's how fortunes are built."""
+
+    def _build_user_context(self, user_context: Dict[str, Any]) -> str:
+        """Build contextual information about the user for personalized responses."""
+        if not user_context:
+            return ""
+
+        context_parts = []
+
+        # Include M-Pesa balance first - this is critical for financial advice
+        if 'mpesa_balance' in user_context:
+            balance = user_context['mpesa_balance']
+            context_parts.append(f"Current M-Pesa Balance: KES {balance}")
+
+        # Include conversation history for continuity
+        if 'conversation_history' in user_context and user_context['conversation_history']:
+            history = user_context['conversation_history']
+            context_parts.append(f"Recent Conversation History (last {len(history)} messages): {json.dumps(history, ensure_ascii=False)}")
+
+        if 'recent_transactions' in user_context:
+            context_parts.append(f"Recent Transactions: {json.dumps(user_context['recent_transactions'], ensure_ascii=False)}")
+
+        if 'spending_patterns' in user_context:
+            context_parts.append(f"Spending Patterns (last 30 days): {json.dumps(user_context['spending_patterns'], ensure_ascii=False)}")
+
+        if 'budget_info' in user_context:
+            context_parts.append(f"Active Budget Plan: {json.dumps(user_context['budget_info'], ensure_ascii=False)}")
+
+        if 'financial_goals' in user_context:
+            context_parts.append(f"Financial Goals: {json.dumps(user_context['financial_goals'], ensure_ascii=False)}")
+
+        return "\n".join(context_parts)
+
+    def _parse_max_response(self, response: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Parse the response from M-Pesa Max AI assistant."""
+        content = None
+        try:
+            choices = response.get('choices') or []
+            if choices and 'message' in choices[0]:
+                content = choices[0]['message'].get('content')
+        except Exception:
+            content = None
+
+        if not content:
+            return None
+
+        # For M-Pesa Max, we return the raw response as it's conversational
+        return {
+            'response': content.strip(),
+            'timestamp': json.dumps({'generated_at': str(os.times())}),  # Simple timestamp
+            'model_used': response.get('model', 'unknown'),
+        }
+
+    def _fallback_max_response(self, message: str) -> Dict[str, Any]:
+        """Fallback response when M-Pesa Max AI is unavailable."""
+        return {
+            'response': f"I apologize, but I'm currently unable to provide financial advice. Error: {message}. Please try again later or contact support.",
+            'timestamp': json.dumps({'generated_at': str(os.times())}),
+            'model_used': 'fallback',
+            'error': True,
+        }
+
     def _fallback_response(self, message: str) -> Dict[str, Any]:
         # Deterministic conservative fallback
         return {

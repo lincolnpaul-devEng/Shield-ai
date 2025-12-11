@@ -10,10 +10,11 @@ class FinancialStrategist {
   Future<ConversationMessage> askQuestion(
     String question,
     String userId,
-    String pin,
-  ) async {
+    String pin, {
+    List<Map<String, dynamic>>? conversationHistory,
+  }) async {
     try {
-      final response = await _apiService.askAI(userId, question);
+      final response = await _apiService.askAI(userId, question, conversationHistory: conversationHistory);
 
       return ConversationMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
