@@ -1,30 +1,40 @@
-# This file is used by Render to configure and deploy the services.
-# For more details, see https://render.com/docs/blueprint-spec
-
 services:
-  # The Python (Flask) backend service
   - type: web
     name: shield-ai-backend
-    env: python
-    runtime: python
-    rootDir: backend
-    plan: free
-    buildCommand: |
-      pip install --upgrade pip
-      pip install -r requirements.txt
-      $env:FLASK_APP = "wsgi:app"; flask db upgrade
-    startCommand: "gunicorn --workers 2 --bind 0.0.0.0:$PORT wsgi:app"
+    runtime: python3
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "gunicorn --chdir backend --workers 2 --threads 2 --bind 0.0.0.0:$PORT wsgi:app"
     envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: shield-ai-database
-          property: connectionString
+      - key: FLASK_ENV
+        value: production
       - key: SECRET_KEY
         generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://shieldai.ke
+      - key: DATABASE_URL
+        fromDatabase:
+          name: shield_ai_db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: shield-ai-redis
+          property: connectionString
+      - key: OPENROUTER_API_KEY
+        sync: false  # Set this manually in Render dashboard
+      - key: BING_SEARCH_API_KEY
+        sync: false  # Set this manually in Render dashboard
+      - key: LOG_LEVEL
+        value: INFO
 
 databases:
-  # The PostgreSQL database
-  - name: shield-ai-database
-    databaseName: shieldai_dev
-    user: shieldai_user
-    plan: free
+  - name: shield_ai_db
+    databaseName: shield_ai_prod
+    user: shield_ai_user
+    plan: starter
+
+redis:
+  - name: shield-ai-redis
+    plan: starter
