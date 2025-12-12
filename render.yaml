@@ -1,7 +1,7 @@
 services:
   - type: web
     name: shield-ai-backend
-    runtime: python3
+    runtime: python
     buildCommand: "pip install -r backend/requirements.txt"
     startCommand: "gunicorn --chdir backend --workers 2 --threads 2 --bind 0.0.0.0:$PORT wsgi:app"
     envVars:
@@ -28,13 +28,15 @@ services:
         sync: false  # Set this manually in Render dashboard
       - key: LOG_LEVEL
         value: INFO
+  - type: redis
+    name: shield-ai-redis
+    plan: starter
+    ipAllowList:
+      - source: "0.0.0.0/0"
+        description: "Allow all connections"
 
 databases:
   - name: shield_ai_db
     databaseName: shield_ai_prod
     user: shield_ai_user
-    plan: starter
-
-redis:
-  - name: shield-ai-redis
     plan: starter
