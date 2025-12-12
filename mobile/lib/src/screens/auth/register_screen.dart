@@ -245,8 +245,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register for Shield AI'),
+        title: const Text('Register for M-Pesa Max'),
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        automaticallyImplyLeading: false,
       ),
       body: SafeArea(
         child: SingleChildScrollView(

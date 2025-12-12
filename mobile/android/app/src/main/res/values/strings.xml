@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Declare specific SMS prefixes for MPESA, banking, and telecom services -->
+    <string name="sms_retriever_prefixes">
+        "MPESA", "KCB", "Safaricom", "Equity", "Co-op", "Airtel", "Orange"
+    </string>
+    <!-- Use SMS Retriever API instead of Telephony Manager for better security and efficiency -->
+</resources>

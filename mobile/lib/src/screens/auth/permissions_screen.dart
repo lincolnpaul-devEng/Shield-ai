@@ -85,7 +85,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Shield AI Header
+              // M-Pesa Max Header
               Container(
                 width: 100,
                 height: 100,
@@ -114,7 +114,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
               const SizedBox(height: 16),
 
               Text(
-                'To provide the best fraud protection for your M-Pesa transactions, Shield AI needs access to some features on your device.',
+                'To provide the best fraud protection for your M-Pesa transactions, M-Pesa Max needs access to some features on your device.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -229,7 +229,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Shield AI only uses these permissions to analyze your transaction patterns and protect you from fraud. Your data is processed locally and never stored on our servers.',
+                      'M-Pesa Max only uses these permissions to analyze your transaction patterns and protect you from fraud. Your data is processed locally and never stored on our servers.',
                       style: TextStyle(
                         fontSize: 12,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,

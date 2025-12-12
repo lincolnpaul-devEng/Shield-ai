@@ -10,7 +10,7 @@ class HomeScreen extends StatelessWidget {
     final user = context.watch<UserProvider>().currentUser;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Shield AI')),
+      appBar: AppBar(title: const Text('M-Pesa Max')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

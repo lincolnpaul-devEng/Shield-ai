@@ -5,7 +5,7 @@ class ShareService {
   static Future<void> shareMessage(BuildContext context, String message) async {
     try {
       // Format the message for sharing
-      final formattedMessage = 'M-Pesa Max Financial Advice:\n\n$message\n\nShared from Shield AI';
+      final formattedMessage = 'M-Pesa Max Financial Advice:\n\n$message\n\nShared from M-Pesa Max';
 
       await Share.share(
         formattedMessage,

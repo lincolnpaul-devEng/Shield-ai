@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../providers/demo_provider.dart';
+import '../providers/theme_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -10,18 +12,13 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // Feature toggles (stubbed; persist with shared_preferences or provider)
+  // Feature toggles
   bool _realtimeAlerts = true;
   bool _backgroundMonitoring = false;
 
-  // Permissions status (stubbed; wire to permission_handler/geolocator/notifications)
-  bool _smsGranted = false;
-  bool _notificationsGranted = true;
-  bool _locationGranted = false;
-
-  // Profile fields (stubbed)
-  final _phoneController = TextEditingController();
-  final _limitController = TextEditingController();
+  // Profile fields
+  final _phoneController = TextEditingController(text: '254712345678');
+  final _limitController = TextEditingController(text: '15000');
 
   @override
   void dispose() {
@@ -32,245 +29,300 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final demoProvider = context.watch<DemoProvider>();
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        title: const Text('Settings'),
+        elevation: 0,
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Permissions', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          _PermissionTile(
-            title: 'SMS Read Access',
-            granted: _smsGranted,
-            explanation:
-                'We use SMS (e.g., M-Pesa messages) to learn your transaction patterns and detect fraud faster. Your data stays on-device or is encrypted for protection.',
-            onRequest: () async {
-              // TODO: Request READ_SMS (Android) via permission_handler/telephony
-              setState(() => _smsGranted = true);
-            },
-          ),
-          _PermissionTile(
-            title: 'Notifications',
-            granted: _notificationsGranted,
-            explanation:
-                'Notifications are used to alert you immediately if suspicious activity is detected, allowing you to block or allow a transaction quickly.',
-            onRequest: () async {
-              // TODO: Request notification permission (iOS) or ensure channel (Android)
-              setState(() => _notificationsGranted = true);
-            },
-          ),
-          _PermissionTile(
-            title: 'Location Access',
-            granted: _locationGranted,
-            explanation:
-                'Location helps detect unusual transaction locations, a common sign of fraud. We request precise location only when needed.',
-            onRequest: () async {
-              // TODO: Request location via geolocator
-              setState(() => _locationGranted = true);
-            },
-          ),
-          const Divider(height: 32),
-
-          Text('M-Pesa Sync', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.sync),
-                      const SizedBox(width: 8),
-                      Text('Transaction Synchronization',
-                          style: Theme.of(context).textTheme.titleSmall),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Automatically sync your M-Pesa transactions to improve fraud detection accuracy. '
-                    'This helps Shield AI learn your spending patterns and detect unusual activity.',
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            // TODO: Implement manual sync
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Syncing M-Pesa transactions...')),
-                            );
-                          },
-                          icon: const Icon(Icons.sync),
-                          label: const Text('Sync Now'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Last sync: Never',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const Divider(height: 32),
-
-          Text('Features', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          SwitchListTile(
-            title: const Text('Real-time Fraud Alerts'),
-            subtitle: const Text('Get immediate alerts for suspicious transactions'),
-            value: _realtimeAlerts,
-            onChanged: (v) => setState(() => _realtimeAlerts = v),
-          ),
-          SwitchListTile(
-            title: const Text('Background Monitoring'),
-            subtitle: const Text('Analyze patterns continuously for better protection'),
-            value: _backgroundMonitoring,
-            onChanged: (v) => setState(() => _backgroundMonitoring = v),
-          ),
-
-          const Divider(height: 32),
-          Text('Profile', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _phoneController,
-            decoration: const InputDecoration(
-              labelText: 'Phone (e.g., 2547XXXXXXXX)',
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: TextInputType.phone,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _limitController,
-            decoration: const InputDecoration(
-              labelText: 'Normal Spending Limit (KSH)',
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: _saveProfile,
-              icon: const Icon(Icons.save),
-              label: const Text('Save'),
-            ),
-          ),
-
-          const Divider(height: 32),
-          Text('Demo Mode', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          SwitchListTile(
-            title: const Text('Developer Mode'),
-            subtitle: const Text('Enable advanced demo controls and testing features'),
-            value: demoProvider.isDeveloperMode,
-            onChanged: (v) => demoProvider.toggleDeveloperMode(),
-          ),
-          if (demoProvider.isDeveloperMode) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pushNamed(context, '/demo'),
-                    icon: const Icon(Icons.developer_mode),
-                    label: const Text('Demo Controls'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-
-          const Divider(height: 32),
-          Text('About', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('Shield AI'),
-              subtitle: const Text('A Kenyan mobile money fraud protection app.'),
-              trailing: const Text('v1.0.0'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Why these permissions?\n\n'
-            '• SMS: Helps us learn your M-Pesa patterns to detect unusual activity.\n'
-            '• Notifications: Allows instant alerts to block suspicious transactions.\n'
-            '• Location: Detects unusual locations compared to your normal usage.\n\n'
-            'Your privacy matters: data is protected and used only to keep you safe.\n\n'
-            'Proudly crafted by Lincoln Paul 😎',
-          ),
+          _buildProfileSection(),
+          const SizedBox(height: 24),
+          _buildAppearanceSection(),
+          const SizedBox(height: 24),
+          _buildSecuritySection(),
+          const SizedBox(height: 24),
+          _buildDeveloperSection(),
+          const SizedBox(height: 24),
+          _buildAboutSection(),
         ],
       ),
     );
   }
 
+  Widget _buildProfileSection() {
+    return _SettingsCard(
+      title: 'Profile',
+      icon: Icons.person_outline,
+      children: [
+        TextField(
+          controller: _phoneController,
+          decoration: const InputDecoration(
+            labelText: 'Phone Number',
+            prefixIcon: Icon(Icons.phone_outlined),
+          ),
+          keyboardType: TextInputType.phone,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _limitController,
+          decoration: const InputDecoration(
+            labelText: 'Normal Spending Limit (KSH)',
+            prefixIcon: Icon(Icons.attach_money_outlined),
+          ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerRight,
+          child: ElevatedButton.icon(
+            onPressed: _saveProfile,
+            icon: const Icon(Icons.save_outlined),
+            label: const Text('Save'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAppearanceSection() {
+    return _SettingsCard(
+      title: 'Appearance',
+      icon: Icons.palette_outlined,
+      children: [
+        _SettingsSwitchTile(
+          title: 'Dark Mode',
+          subtitle: 'Enable a darker theme',
+          icon: Icons.dark_mode_outlined,
+          value: context.watch<ThemeProvider>().isDarkMode,
+          onChanged: (value) {
+            context.read<ThemeProvider>().toggleTheme();
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSecuritySection() {
+    return _SettingsCard(
+      title: 'Security & Privacy',
+      icon: Icons.security_outlined,
+      children: [
+        _SettingsSwitchTile(
+          title: 'Real-time Fraud Alerts',
+          subtitle: 'Immediate alerts for suspicious activity',
+          icon: Icons.notifications_active_outlined,
+          value: _realtimeAlerts,
+          onChanged: (v) => setState(() => _realtimeAlerts = v),
+        ),
+        _SettingsSwitchTile(
+          title: 'Background Monitoring',
+          subtitle: 'Analyze patterns for better protection',
+          icon: Icons.sync_problem_outlined,
+          value: _backgroundMonitoring,
+          onChanged: (v) => setState(() => _backgroundMonitoring = v),
+        ),
+        const Divider(height: 24),
+        _PermissionTile(
+          permission: Permission.sms,
+          title: 'SMS Read Access',
+          explanation: 'Needed to analyze M-Pesa messages for fraud detection.',
+        ),
+        _PermissionTile(
+          permission: Permission.location,
+          title: 'Location Access',
+          explanation: 'Helps detect unusual transaction locations.',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDeveloperSection() {
+    final demoProvider = context.watch<DemoProvider>();
+    return _SettingsCard(
+      title: 'Developer Options',
+      icon: Icons.developer_mode_outlined,
+      children: [
+        _SettingsSwitchTile(
+          title: 'Developer Mode',
+          subtitle: 'Enable advanced demo controls',
+          icon: Icons.bug_report_outlined,
+          value: demoProvider.isDeveloperMode,
+          onChanged: (v) => demoProvider.toggleDeveloperMode(),
+        ),
+        if (demoProvider.isDeveloperMode) ...[
+          const SizedBox(height: 8),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pushNamed(context, '/demo'),
+            icon: const Icon(Icons.smart_toy_outlined),
+            label: const Text('Open Demo Controls'),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAboutSection() {
+    return _SettingsCard(
+      title: 'About',
+      icon: Icons.info_outline,
+      children: [
+        _SettingsLinkTile(
+          title: 'Version',
+          subtitle: '1.0.0',
+          icon: Icons.tag,
+          onTap: () {},
+        ),
+        _SettingsLinkTile(
+          title: 'Terms of Service',
+          icon: Icons.description_outlined,
+          onTap: () {
+            Navigator.pushNamed(context, '/terms-of-service');
+          },
+        ),
+        _SettingsLinkTile(
+          title: 'Privacy Policy',
+          icon: Icons.privacy_tip_outlined,
+          onTap: () {
+            Navigator.pushNamed(context, '/privacy-policy');
+          },
+        ),
+      ],
+    );
+  }
+
   void _saveProfile() {
-    // TODO: Persist profile via provider/API
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved')));
   }
 }
 
-class _PermissionTile extends StatelessWidget {
+class _SettingsCard extends StatelessWidget {
   final String title;
-  final bool granted;
-  final String explanation;
-  final VoidCallback onRequest;
+  final IconData icon;
+  final List<Widget> children;
 
-  const _PermissionTile({
-    required this.title,
-    required this.granted,
-    required this.explanation,
-    required this.onRequest,
-  });
+  const _SettingsCard({required this.title, required this.icon, required this.children});
 
   @override
   Widget build(BuildContext context) {
-    final color = granted ? Colors.green : Colors.red;
-    final icon = granted ? Icons.check_circle : Icons.error_outline;
-    final status = granted ? 'Granted' : 'Not granted';
-
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(icon, color: color),
+                Icon(icon, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                const Spacer(),
-                Text(status, style: TextStyle(color: color)),
+                Text(title, style: Theme.of(context).textTheme.titleLarge),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(explanation),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton(
-                onPressed: onRequest,
-                child: const Text('Request Permission'),
-              ),
-            )
+            const Divider(height: 24),
+            ...children,
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SettingsSwitchTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _SettingsSwitchTile({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      title: Text(title),
+      subtitle: Text(subtitle),
+      secondary: Icon(icon),
+      value: value,
+      onChanged: onChanged,
+      activeColor: Theme.of(context).colorScheme.primary,
+    );
+  }
+}
+
+class _SettingsLinkTile extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _SettingsLinkTile({required this.title, this.subtitle, required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: subtitle != null ? Text(subtitle!) : null,
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: onTap,
+    );
+  }
+}
+
+class _PermissionTile extends StatefulWidget {
+  final Permission permission;
+  final String title;
+  final String explanation;
+
+  const _PermissionTile({required this.permission, required this.title, required this.explanation});
+
+  @override
+  State<_PermissionTile> createState() => _PermissionTileState();
+}
+
+class _PermissionTileState extends State<_PermissionTile> {
+  PermissionStatus _status = PermissionStatus.denied;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPermissionStatus();
+  }
+
+  Future<void> _checkPermissionStatus() async {
+    final status = await widget.permission.status;
+    setState(() => _status = status);
+  }
+
+  Future<void> _requestPermission() async {
+    final status = await widget.permission.request();
+    if (status.isPermanentlyDenied) {
+      await openAppSettings();
+    }
+    setState(() => _status = status);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(
+        _status.isGranted ? Icons.check_circle_outline : Icons.error_outline,
+        color: _status.isGranted ? Colors.green : Colors.red,
+      ),
+      title: Text(widget.title),
+      subtitle: Text(widget.explanation),
+      trailing: ElevatedButton(
+        onPressed: _requestPermission,
+        child: Text(_status.isGranted ? 'Granted' : 'Request'),
       ),
     );
   }

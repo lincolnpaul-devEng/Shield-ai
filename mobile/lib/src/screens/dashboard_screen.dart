@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -6,9 +7,12 @@ import '../providers/transaction_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/fraud_provider.dart';
 import '../providers/financial_provider.dart';
+import '../providers/sms_provider.dart';
 import '../models/transaction.dart';
 import '../models/spending_plan.dart';
 import '../utils/snackbar_helper.dart';
+import '../widgets/responsive_scaffold.dart';
+import '../widgets/responsive_container.dart';
 import 'main_navigation.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -44,18 +48,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final txProvider = context.watch<TransactionProvider>();
     final fraudProvider = context.watch<FraudProvider>();
     final financialProvider = context.watch<FinancialProvider>();
+    final smsProvider = context.watch<SmsProvider>();
 
     final transactions = txProvider.transactions;
     final hasTransactions = transactions.isNotEmpty;
     final spendingPlan = financialProvider.currentPlan;
 
-    final balance = _calculateBalance(transactions);
+    final balance = _calculateBalance(transactions, smsProvider.latestBalance);
     final weeklySpending = _calculateWeeklySpending(transactions);
     final monthlySpending = _calculateMonthlySpending(transactions);
 
-    return Scaffold(
+    return ResponsiveScaffold(
       appBar: AppBar(
         title: const Text('Financial Dashboard'),
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             onPressed: _syncBalance,
@@ -73,20 +79,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
             await context.read<TransactionProvider>().loadTransactions(user.phone);
           }
         },
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+        child: ResponsiveListView(
+          padding: EdgeInsets.zero,
           children: [
-            _HeaderGreeting(name: user?.firstName ?? 'User'),
-            const SizedBox(height: 16),
-
-            Row(
-              children: [
-                Expanded(child: _BalanceCard(balance: balance)),
-                const SizedBox(width: 12),
-                Expanded(child: _WeeklySpendingCard(spending: weeklySpending)),
-              ],
+            ResponsiveContainer(
+              child: _HeaderGreeting(name: user?.firstName ?? 'User'),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16.responsiveH(context)),
+
+            ResponsiveContainer(
+              child: Row(
+                children: [
+                  Expanded(child: _BalanceCard(balance: balance)),
+                  SizedBox(width: 12.responsiveW(context)),
+                  Expanded(child: _WeeklySpendingCard(spending: weeklySpending)),
+                ],
+              ),
+            ),
+            SizedBox(height: 16.responsiveH(context)),
 
             if (spendingPlan != null) ...[
               _FinancialHealthCard(plan: spendingPlan),
@@ -112,6 +122,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
             else
               ...transactions.take(5).map((t) => _TransactionTile(tx: t)),
 
+            // Lottie Animation
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 150,
+              child: Lottie.asset(
+                'assets/animations/money.json',
+                fit: BoxFit.contain,
+                repeat: true,
+              ),
+            ),
+
             if (hasTransactions) ...[
               const SizedBox(height: 16),
               _QuickAccessCard(
@@ -127,10 +148,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  double _calculateBalance(List<TransactionModel> txs) {
-    // Start with the synced M-Pesa balance
+  double _calculateBalance(List<TransactionModel> txs, double? smsBalance) {
+    // Priority: SMS-parsed balance > User-synced balance > 0.0
     final user = context.read<UserProvider>().currentUser;
-    double balance = user?.mpesaBalance ?? 0.0;
+    double balance = smsBalance ?? user?.mpesaBalance ?? 0.0;
 
     // Adjust balance based on all transactions since account creation
     // Positive amount = outgoing (subtract), Negative amount = incoming (add)
@@ -184,7 +205,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  void _syncBalance() {
+  Future<void> _syncBalance() async {
+    // First try to extract balance from recent SMS
+    final smsProvider = context.read<SmsProvider>();
+    final smsBalance = await smsProvider.extractLatestBalance();
+    if (smsBalance != null) {
+      // Update user balance with SMS-parsed value
+      final userProvider = context.read<UserProvider>();
+      await userProvider.updateMpesaBalance(smsBalance);
+      SnackbarHelper.showSuccess(context, 'Balance synced from SMS: KSH ${smsBalance.toStringAsFixed(2)}');
+      return;
+    }
+
+    // Fallback to manual sync dialog
     showDialog(
       context: context,
       builder: (context) => _BalanceSyncDialog(),
@@ -213,7 +246,7 @@ class _HeaderGreeting extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            'Welcome $name to Shield AI',
+            'Welcome $name to M-Pesa Max',
             style: Theme.of(context).textTheme.titleLarge,
             overflow: TextOverflow.ellipsis,
           ),
@@ -829,7 +862,7 @@ class _BalanceSyncDialogState extends State<_BalanceSyncDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
-            'Enter your current M-Pesa balance to sync with Shield AI. This will ensure accurate balance calculations.',
+            'Enter your current M-Pesa balance to sync with M-Pesa Max. This will ensure accurate balance calculations.',
             style: TextStyle(fontSize: 14),
           ),
           const SizedBox(height: 16),
@@ -877,10 +910,8 @@ class _BalanceSyncDialogState extends State<_BalanceSyncDialog> {
 
   Future<void> _syncBalance() async {
     final balanceText = _balanceController.text.trim();
-    final pin = _pinController.text.trim();
-
-    if (balanceText.isEmpty || pin.isEmpty) {
-      SnackbarHelper.showError(context, 'Please enter both balance and PIN');
+    if (balanceText.isEmpty) {
+      SnackbarHelper.showError(context, 'Please enter your balance');
       return;
     }
 
@@ -894,7 +925,7 @@ class _BalanceSyncDialogState extends State<_BalanceSyncDialog> {
 
     try {
       final userProvider = context.read<UserProvider>();
-      final success = await userProvider.updateMpesaBalance(balance, pin);
+      final success = await userProvider.updateMpesaBalance(balance);
 
       if (success && mounted) {
         Navigator.of(context).pop();

@@ -11,44 +11,92 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # State management and HTTP
+  # Core optimized dependencies (reduced from 17 to 12)
   provider: ^6.1.2
   http: ^1.2.1
-  flutter_local_notifications: ^19.5.0
-  permission_handler: ^12.0.1
-  url_launcher: ^6.3.0
-  geolocator: ^14.0.2
-  share_plus: ^12.0.1
-
-  # Audio
-  audioplayers: ^6.0.0
-
-  # SVG rendering
-  flutter_svg: ^2.0.10+1
-
-  # Background tasks and local storage
-  workmanager: ^0.9.0+3
   shared_preferences: ^2.2.3
 
-  # Fonts and Icons
+  # Essential permissions (removed unused ones)
+  permission_handler: ^12.0.1
+  geolocator: ^14.0.2
+
+  # UI optimization
   google_fonts: ^6.2.1
+  flutter_svg: ^2.0.10+1
   font_awesome_flutter: ^10.7.0
 
-  # Markdown support
+  # Audio - REQUIRED for sound feedback
+  audioplayers: ^6.0.0
+  share_plus: ^12.0.1
+
+  # Animations - REQUIRED for money animation
+  lottie: ^3.1.2
+
+  # Markdown support - REQUIRED for financial planning screen
   flutter_markdown: ^0.7.1
 
+  # Background processing (kept essential)
+  workmanager: ^0.9.0+3
+
+  # SMS handling (essential for M-Pesa)
+  sms_advanced: ^1.1.0
+
+  # URL launcher for external links
+  url_launcher: ^6.3.0
+
+  # Notifications (essential for fraud alerts)
+  flutter_local_notifications: ^19.5.0
+
   cupertino_icons: ^1.0.8
-  process_run: ^1.2.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.1
+  test: ^1.24.0
+
+  # Performance testing (NEW)
+  flutter_driver:
+    sdk: flutter
 
 flutter:
   uses-material-design: true
 
+  # Optimized assets - essential for functionality
   assets:
-    - assets/images/
-    - assets/sounds/
+    - assets/images/ic_launch.png
+    - assets/images/shield-ai.jpg
+    - assets/sounds/response.wav
+    - assets/sounds/typing.wav
+    - assets/animations/money.json
+
+  # Optimized fonts - preload only essential
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+
+# Performance optimizations
+flutter_assets:
+  # Reduce asset loading time
+  enable-full-compilation: true
+
+# Build optimizations
+build_runner:
+  # Tree shake unused code
+  build_to: source
+
+# App Icon Configuration
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/ic_launch.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/ic_launch.png"

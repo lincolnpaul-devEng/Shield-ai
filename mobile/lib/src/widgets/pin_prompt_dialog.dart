@@ -123,11 +123,11 @@ class _PinPromptDialogState extends State<PinPromptDialog> {
       actions: [
         TextButton(
           onPressed: _onCancel,
-          child: Text(widget.cancelText!),
+          child: Text(widget.cancelText ?? 'Cancel'),
         ),
         ElevatedButton(
           onPressed: _onConfirm,
-          child: Text(widget.confirmText!),
+          child: Text(widget.confirmText ?? 'Confirm'),
         ),
       ],
     );

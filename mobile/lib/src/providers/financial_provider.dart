@@ -197,7 +197,7 @@ class FinancialProvider extends ChangeNotifier {
 
   // Enhanced AI Features
 
-  Future<void> askQuestion(String question, String userId, String pin) async {
+  Future<void> askQuestion(String question, String userId) async {
     // Add user message immediately
     final userMessage = ConversationMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -211,7 +211,7 @@ class FinancialProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final aiMessage = await _strategist.askQuestion(question, userId, pin);
+      final aiMessage = await _strategist.askQuestion(question, userId);
       _conversations.add(aiMessage);
       _error = null;
     } catch (e) {
@@ -510,5 +510,156 @@ class FinancialProvider extends ChangeNotifier {
     _activeUserPlan = null;
     _budgetTemplates.clear();
     notifyListeners();
+  }
+
+  // SMS-based Transaction Analysis Methods
+
+  Future<void> analyzeSmsTransactions(
+    List<Map<String, dynamic>> smsTransactions,
+    String userId,
+    String pin,
+  ) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final requestData = {
+        'pin': pin,
+        'sms_transactions': smsTransactions,
+      };
+
+      final response = await _apiService.post('/users/$userId/analyze-sms-transactions', requestData);
+
+      // Update local state with results
+      final anomaliesData = response['anomalies'] as List<dynamic>? ?? [];
+      final predictionsData = response['predictions'] as List<dynamic>? ?? [];
+      final suggestionsData = response['suggestions'] as List<dynamic>? ?? [];
+
+      _anomalies = anomaliesData.map((a) => SpendingAnomaly.fromJson(a)).toList();
+      _predictions = predictionsData.map((p) => SpendingPrediction.fromJson(p)).toList();
+      _suggestions = suggestionsData.map((s) => SmartSuggestion.fromJson(s)).toList();
+
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+      if (kDebugMode) {
+        print('Error analyzing SMS transactions: $e');
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> detectSmsAnomalies(
+    List<Map<String, dynamic>> smsTransactions,
+    String userId,
+    String pin,
+  ) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final requestData = {
+        'pin': pin,
+        'sms_transactions': smsTransactions,
+      };
+
+      final response = await _apiService.post('/users/$userId/sms-anomalies', requestData);
+
+      final anomaliesData = response['anomalies'] as List<dynamic>? ?? [];
+      _anomalies = anomaliesData.map((a) => SpendingAnomaly.fromJson(a)).toList();
+
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+      if (kDebugMode) {
+        print('Error detecting SMS anomalies: $e');
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> generateSmsPredictions(
+    List<Map<String, dynamic>> smsTransactions,
+    String userId,
+    String pin, {
+    int monthsAhead = 3,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final requestData = {
+        'pin': pin,
+        'sms_transactions': smsTransactions,
+        'months_ahead': monthsAhead,
+      };
+
+      final response = await _apiService.post('/users/$userId/sms-predictions', requestData);
+
+      final predictionsData = response['predictions'] as List<dynamic>? ?? [];
+      _predictions = predictionsData.map((p) => SpendingPrediction.fromJson(p)).toList();
+
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+      if (kDebugMode) {
+        print('Error generating SMS predictions: $e');
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> generateSmsSuggestions(
+    List<Map<String, dynamic>> smsTransactions,
+    String userId,
+    String pin,
+    double currentBalance,
+  ) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final requestData = {
+        'pin': pin,
+        'sms_transactions': smsTransactions,
+        'current_balance': currentBalance,
+      };
+
+      final response = await _apiService.post('/users/$userId/sms-suggestions', requestData);
+
+      final suggestionsData = response['suggestions'] as List<dynamic>? ?? [];
+      _suggestions = suggestionsData.map((s) => SmartSuggestion.fromJson(s)).toList();
+
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+      if (kDebugMode) {
+        print('Error generating SMS suggestions: $e');
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Helper method to convert SMS transactions to TransactionModel format
+  List<Map<String, dynamic>> convertSmsToTransactionFormat(List<Map<String, dynamic>> smsTransactions) {
+    return smsTransactions.map((sms) {
+      return {
+        'amount': sms['amount'],
+        'recipient': sms['recipient'],
+        'timestamp': sms['timestamp'],
+        'balance_after': sms['balance_after'],
+        'transaction_type': sms['transaction_type'],
+        'is_incoming': sms['is_incoming'],
+      };
+    }).toList();
   }
 }

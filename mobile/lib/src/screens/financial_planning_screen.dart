@@ -12,6 +12,7 @@ import '../models/user.dart';
 import '../services/sound_service.dart';
 import '../services/clipboard_service.dart';
 import '../services/share_service.dart';
+import '../services/sms_reader_service.dart';
 import '../widgets/pin_prompt_dialog.dart';
 
 class FinancialPlanningScreen extends StatefulWidget {
@@ -64,15 +65,17 @@ class _FinancialPlanningScreenState extends State<FinancialPlanningScreen> {
 
     if (userProvider.currentUser == null) return;
 
+    final userPhone = userProvider.currentUser!.phone; // Store before async call
+
     final pin = await PinPromptDialog.show(
       context,
       title: 'Load Budget Plans',
       message: 'Enter your M-Pesa PIN to load your budget plans.',
     );
 
-    if (pin != null && mounted) {
+    if (pin != null && mounted && userProvider.currentUser != null) {
       await financialProvider.loadUserPlans(
-        userProvider.currentUser!.phone,
+        userPhone,
         pin,
       );
 
@@ -111,6 +114,7 @@ class _FinancialPlanningScreenState extends State<FinancialPlanningScreen> {
       length: 5,
       child: Scaffold(
         appBar: AppBar(
+          automaticallyImplyLeading: false,
           title: const Text('Financial Planning'),
           actions: [
             IconButton(
@@ -221,11 +225,11 @@ class _FinancialPlanView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<FinancialProvider>(
       builder: (context, financialProvider, child) {
-        final userPlan = financialProvider.activeUserPlan;
+        final userPlans = financialProvider.userPlans;
         final aiPlan = financialProvider.currentPlan;
 
-        if (userPlan != null) {
-          return _UserPlanView(userPlan: userPlan);
+        if (userPlans.isNotEmpty) {
+          return _UserPlansListView();
         } else if (aiPlan != null) {
           return _PlanAnalysisView();
         } else {
@@ -256,6 +260,60 @@ class _UserPlanView extends StatelessWidget {
         const SizedBox(height: 16),
         _CreateNewPlanCard(),
       ],
+    );
+  }
+}
+
+class _UserPlansListView extends StatelessWidget {
+  const _UserPlansListView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<FinancialProvider>(
+      builder: (context, financialProvider, child) {
+        final sortedPlans = List<UserBudgetPlan>.from(financialProvider.userPlans)
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: sortedPlans.length + 1, // +1 for the create new card
+          itemBuilder: (context, index) {
+            if (index == sortedPlans.length) {
+              return const _CreateNewPlanCard();
+            }
+            final plan = sortedPlans[index];
+            return _UserPlanCard(plan: plan);
+          },
+        );
+      },
+    );
+  }
+}
+
+class _UserPlanCard extends StatelessWidget {
+  final UserBudgetPlan plan;
+
+  const _UserPlanCard({required this.plan});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _UserPlanHeader(plan: plan),
+            const SizedBox(height: 16),
+            _UserBudgetOverviewCard(plan: plan),
+            const SizedBox(height: 16),
+            _UserSpendingCategoriesCard(plan: plan),
+            const SizedBox(height: 16),
+            _PlanCardActions(plan: plan),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -539,7 +597,7 @@ class _ConversationsViewState extends State<_ConversationsView> {
                 child: TextField(
                   controller: _questionController,
                   decoration: const InputDecoration(
-                    hintText: 'Ask about your financial plan...',
+                    hintText: 'Ask M-Pesa Max anything about your finances...',
                     border: OutlineInputBorder(),
                   ),
                   onSubmitted: (_) => _askQuestion(financialProvider, transactionProvider, widget.userProvider),
@@ -560,16 +618,10 @@ class _ConversationsViewState extends State<_ConversationsView> {
   Future<void> _askQuestion(FinancialProvider provider, TransactionProvider transactionProvider, UserProvider userProvider) async {
     final question = _questionController.text.trim();
     if (question.isNotEmpty && userProvider.currentUser != null) {
-      final pin = await PinPromptDialog.show(
-        context,
-        title: 'AI Assistant',
-        message: 'Enter your M-Pesa PIN to ask the AI assistant.',
-      );
+      final userPhone = userProvider.currentUser!.phone; // Store before async call
 
-      if (pin != null && mounted) {
-        provider.askQuestion(question, userProvider.currentUser!.phone, pin);
-        _questionController.clear();
-      }
+      provider.askQuestion(question, userPhone);
+      _questionController.clear();
     }
   }
 }
@@ -697,6 +749,7 @@ class _ConversationBubble extends StatelessWidget {
                       styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
                         p: Theme.of(context).textTheme.bodyMedium,
                       ),
+                      onTapLink: (_, __, ___) {}, // Disable link tapping to prevent navigation
                     ),
             ),
             // Action buttons (only for AI messages)
@@ -753,8 +806,140 @@ class _MessageActions extends StatelessWidget {
 
 
 
-class _PredictionsView extends StatelessWidget {
+class _PredictionsView extends StatefulWidget {
   const _PredictionsView();
+
+  @override
+  State<_PredictionsView> createState() => _PredictionsViewState();
+}
+
+class _PredictionsViewState extends State<_PredictionsView> {
+  bool _hasSmsPermissions = false;
+  bool _isCheckingPermissions = true;
+  final SmsReaderService _smsReaderService = SmsReaderService();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSmsPermissions();
+  }
+
+  @override
+  void dispose() {
+    _smsReaderService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkSmsPermissions() async {
+    try {
+      final hasPermission = await _smsReaderService.hasSmsPermissions();
+      setState(() {
+        _isCheckingPermissions = false;
+        _hasSmsPermissions = hasPermission;
+      });
+    } catch (e) {
+      setState(() {
+        _isCheckingPermissions = false;
+        _hasSmsPermissions = false;
+      });
+      print('Error checking SMS permissions: $e');
+    }
+  }
+
+  Future<void> _requestSmsPermissions() async {
+    try {
+      final granted = await _smsReaderService.requestSmsPermissions();
+      setState(() {
+        _hasSmsPermissions = granted;
+      });
+
+      if (granted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('SMS permissions granted!')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('SMS permissions denied. Please enable them in settings.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error requesting permissions: $e')),
+      );
+    }
+  }
+
+  Future<void> _generatePredictionsFromSms() async {
+    final financialProvider = context.read<FinancialProvider>();
+    final userProvider = context.read<UserProvider>();
+
+    if (userProvider.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to analyze SMS transactions')),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Reading M-Pesa SMS messages...')),
+    );
+
+    try {
+      // Get recent M-Pesa messages (last 90 days for better prediction data)
+      final messages = await _smsReaderService.getMpesaMessagesInRange(
+        DateTime.now().subtract(const Duration(days: 90)),
+        DateTime.now(),
+        limit: 100, // Limit to recent messages for performance
+      );
+
+      if (messages.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No M-Pesa SMS messages found. Try sending/receiving money first.')),
+        );
+        return;
+      }
+
+      // Parse the SMS messages into transaction data
+      final smsTransactions = _smsReaderService.parseMpesaTransactions(messages);
+
+      if (smsTransactions.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No valid M-Pesa transactions found in SMS messages.')),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Analyzing ${smsTransactions.length} SMS transactions for predictions...')),
+      );
+
+      // Request PIN for backend analysis
+      final pin = await PinPromptDialog.show(
+        context,
+        title: 'Analyze SMS Transactions',
+        message: 'Enter your M-Pesa PIN to analyze your SMS transaction data.',
+      );
+
+      if (pin == null) return;
+
+      await financialProvider.generateSmsPredictions(
+        smsTransactions,
+        userProvider.currentUser!.phone,
+        pin,
+        monthsAhead: 3,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('SMS-based predictions generated successfully!')),
+      );
+
+    } catch (e) {
+      print('Error generating SMS predictions: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error analyzing SMS: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -766,13 +951,43 @@ class _PredictionsView extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
-          child: ElevatedButton.icon(
-            onPressed: () => financialProvider.generatePredictions(
-              transactionProvider.transactions,
-              3, // 3 months ahead
-            ),
-            icon: const Icon(Icons.trending_up),
-            label: const Text('Generate Predictions'),
+          child: Column(
+            children: [
+              // Traditional predictions
+              ElevatedButton.icon(
+                onPressed: () => financialProvider.generatePredictions(
+                  transactionProvider.transactions,
+                  3, // 3 months ahead
+                ),
+                icon: const Icon(Icons.trending_up),
+                label: const Text('Generate from App Data'),
+              ),
+              const SizedBox(height: 8),
+              // SMS-based predictions
+              if (_isCheckingPermissions)
+                const CircularProgressIndicator()
+              else if (_hasSmsPermissions)
+                ElevatedButton.icon(
+                  onPressed: _generatePredictionsFromSms,
+                  icon: const Icon(Icons.sms),
+                  label: const Text('Predict from SMS History'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                  ),
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: _requestSmsPermissions,
+                  icon: const Icon(Icons.analytics),
+                  label: const Text('Enable SMS Predictions'),
+                ),
+              const SizedBox(height: 8),
+              const Text(
+                'SMS predictions analyze your M-Pesa transaction patterns to forecast future spending',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
         Expanded(
@@ -849,8 +1064,139 @@ class _PredictionCard extends StatelessWidget {
   }
 }
 
-class _AnomaliesView extends StatelessWidget {
+class _AnomaliesView extends StatefulWidget {
   const _AnomaliesView();
+
+  @override
+  State<_AnomaliesView> createState() => _AnomaliesViewState();
+}
+
+class _AnomaliesViewState extends State<_AnomaliesView> {
+  bool _hasSmsPermissions = false;
+  bool _isCheckingPermissions = true;
+  final SmsReaderService _smsReaderService = SmsReaderService();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSmsPermissions();
+  }
+
+  @override
+  void dispose() {
+    _smsReaderService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkSmsPermissions() async {
+    try {
+      final hasPermission = await _smsReaderService.hasSmsPermissions();
+      setState(() {
+        _isCheckingPermissions = false;
+        _hasSmsPermissions = hasPermission;
+      });
+    } catch (e) {
+      setState(() {
+        _isCheckingPermissions = false;
+        _hasSmsPermissions = false;
+      });
+      print('Error checking SMS permissions: $e');
+    }
+  }
+
+  Future<void> _requestSmsPermissions() async {
+    try {
+      final granted = await _smsReaderService.requestSmsPermissions();
+      setState(() {
+        _hasSmsPermissions = granted;
+      });
+
+      if (granted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('SMS permissions granted!')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('SMS permissions denied. Please enable them in settings.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error requesting permissions: $e')),
+      );
+    }
+  }
+
+  Future<void> _detectAnomaliesFromSms() async {
+    final financialProvider = context.read<FinancialProvider>();
+    final userProvider = context.read<UserProvider>();
+
+    if (userProvider.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to analyze SMS transactions')),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Reading M-Pesa SMS messages...')),
+    );
+
+    try {
+      // Get recent M-Pesa messages (last 30 days for anomaly detection)
+      final messages = await _smsReaderService.getMpesaMessagesInRange(
+        DateTime.now().subtract(const Duration(days: 30)),
+        DateTime.now(),
+        limit: 200, // More messages for better anomaly detection
+      );
+
+      if (messages.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No M-Pesa SMS messages found. Try sending/receiving money first.')),
+        );
+        return;
+      }
+
+      // Parse the SMS messages into transaction data
+      final smsTransactions = _smsReaderService.parseMpesaTransactions(messages);
+
+      if (smsTransactions.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No valid M-Pesa transactions found in SMS messages.')),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Analyzing ${smsTransactions.length} SMS transactions for anomalies...')),
+      );
+
+      // Request PIN for backend analysis
+      final pin = await PinPromptDialog.show(
+        context,
+        title: 'Analyze SMS Transactions',
+        message: 'Enter your M-Pesa PIN to scan your SMS transaction data for anomalies.',
+      );
+
+      if (pin == null) return;
+
+      await financialProvider.detectSmsAnomalies(
+        smsTransactions,
+        userProvider.currentUser!.phone,
+        pin,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('SMS anomaly detection completed!')),
+      );
+
+    } catch (e) {
+      print('Error detecting SMS anomalies: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error analyzing SMS: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -861,12 +1207,42 @@ class _AnomaliesView extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
-          child: ElevatedButton.icon(
-            onPressed: () => financialProvider.detectAnomalies(
-              transactionProvider.transactions,
-            ),
-            icon: const Icon(Icons.search),
-            label: const Text('Detect Anomalies'),
+          child: Column(
+            children: [
+              // Traditional anomaly detection
+              ElevatedButton.icon(
+                onPressed: () => financialProvider.detectAnomalies(
+                  transactionProvider.transactions,
+                ),
+                icon: const Icon(Icons.search),
+                label: const Text('Detect from App Data'),
+              ),
+              const SizedBox(height: 8),
+              // SMS-based anomaly detection
+              if (_isCheckingPermissions)
+                const CircularProgressIndicator()
+              else if (_hasSmsPermissions)
+                ElevatedButton.icon(
+                  onPressed: _detectAnomaliesFromSms,
+                  icon: const Icon(Icons.sms),
+                  label: const Text('Scan SMS for Anomalies'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                  ),
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: _requestSmsPermissions,
+                  icon: const Icon(Icons.warning),
+                  label: const Text('Enable SMS Scanning'),
+                ),
+              const SizedBox(height: 8),
+              const Text(
+                'SMS scanning analyzes your M-Pesa messages to detect unusual spending patterns and potential fraud',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
         Expanded(
@@ -952,9 +1328,162 @@ class _AnomalyCard extends StatelessWidget {
   }
 }
 
-class _SuggestionsView extends StatelessWidget {
+class _SuggestionsView extends StatefulWidget {
   const _SuggestionsView();
 
+  @override
+  State<_SuggestionsView> createState() => _SuggestionsViewState();
+}
+
+class _SuggestionsViewState extends State<_SuggestionsView> {
+  bool _hasSmsPermissions = false;
+  bool _isCheckingPermissions = true;
+  final SmsReaderService _smsReaderService = SmsReaderService();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSmsPermissions();
+  }
+
+  @override
+  void dispose() {
+    _smsReaderService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkSmsPermissions() async {
+    try {
+      final hasPermission = await _smsReaderService.hasSmsPermissions();
+      setState(() {
+        _isCheckingPermissions = false;
+        _hasSmsPermissions = hasPermission;
+      });
+    } catch (e) {
+      setState(() {
+        _isCheckingPermissions = false;
+        _hasSmsPermissions = false;
+      });
+      print('Error checking SMS permissions: $e');
+    }
+  }
+
+  Future<void> _requestSmsPermissions() async {
+    try {
+      final granted = await _smsReaderService.requestSmsPermissions();
+      setState(() {
+        _hasSmsPermissions = granted;
+      });
+
+      if (granted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('SMS permissions granted!')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('SMS permissions denied. Please enable them in settings.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error requesting permissions: $e')),
+      );
+    }
+  }
+
+  Future<void> _generateSuggestionsFromSms() async {
+    final financialProvider = context.read<FinancialProvider>();
+    final userProvider = context.read<UserProvider>();
+
+    if (userProvider.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to analyze SMS transactions')),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Reading M-Pesa SMS messages...')),
+    );
+
+    try {
+      // Get recent M-Pesa messages (last 60 days for better suggestions)
+      final messages = await _smsReaderService.getMpesaMessagesInRange(
+        DateTime.now().subtract(const Duration(days: 60)),
+        DateTime.now(),
+        limit: 150, // Good amount for pattern analysis
+      );
+
+      if (messages.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No M-Pesa SMS messages found. Try sending/receiving money first.')),
+        );
+        return;
+      }
+
+      // Parse the SMS messages into transaction data
+      final smsTransactions = _smsReaderService.parseMpesaTransactions(messages);
+
+      if (smsTransactions.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No valid M-Pesa transactions found in SMS messages.')),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Analyzing ${smsTransactions.length} SMS transactions for suggestions...')),
+      );
+
+      // Request PIN for backend analysis
+      final pin = await PinPromptDialog.show(
+        context,
+        title: 'Analyze SMS Transactions',
+        message: 'Enter your M-Pesa PIN to generate personalized financial suggestions from your SMS data.',
+      );
+
+      if (pin == null) return;
+
+      // Estimate current balance from SMS data
+      final currentBalance = _estimateCurrentBalanceFromSms(smsTransactions);
+
+      await financialProvider.generateSmsSuggestions(
+        smsTransactions,
+        userProvider.currentUser!.phone,
+        pin,
+        currentBalance,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('SMS-based suggestions generated successfully!')),
+      );
+
+    } catch (e) {
+      print('Error generating SMS suggestions: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error analyzing SMS: $e')),
+      );
+    }
+  }
+
+  double _estimateCurrentBalanceFromSms(List<Map<String, dynamic>> smsTransactions) {
+    if (smsTransactions.isEmpty) return 10000.0;
+
+    // Sort by timestamp (most recent first)
+    final sortedTransactions = List<Map<String, dynamic>>.from(smsTransactions)
+      ..sort((a, b) => DateTime.parse(b['timestamp']).compareTo(DateTime.parse(a['timestamp'])));
+
+    // Get the most recent balance
+    for (final transaction in sortedTransactions) {
+      final balance = transaction['balance_after'] as double?;
+      if (balance != null && balance > 0) {
+        return balance;
+      }
+    }
+
+    // Fallback estimation
+    return 10000.0;
+  }
   @override
   Widget build(BuildContext context) {
     final financialProvider = context.watch<FinancialProvider>();
@@ -965,16 +1494,46 @@ class _SuggestionsView extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
-          child: ElevatedButton.icon(
-            onPressed: () {
-              final currentBalance = _estimateCurrentBalance(transactionProvider.transactions);
-              financialProvider.generateSmartSuggestions(
-                transactionProvider.transactions,
-                currentBalance,
-              );
-            },
-            icon: const Icon(Icons.lightbulb),
-            label: const Text('Generate Suggestions'),
+          child: Column(
+            children: [
+              // Traditional suggestions button
+              ElevatedButton.icon(
+                onPressed: () {
+                  final currentBalance = _estimateCurrentBalance(transactionProvider.transactions);
+                  financialProvider.generateSmartSuggestions(
+                    transactionProvider.transactions,
+                    currentBalance,
+                  );
+                },
+                icon: const Icon(Icons.lightbulb),
+                label: const Text('Generate from App Data'),
+              ),
+              const SizedBox(height: 8),
+              // SMS-based suggestions
+              if (_isCheckingPermissions)
+                const CircularProgressIndicator()
+              else if (_hasSmsPermissions)
+                ElevatedButton.icon(
+                  onPressed: _generateSuggestionsFromSms,
+                  icon: const Icon(Icons.sms),
+                  label: const Text('Analyze SMS Transactions'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                  ),
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: _requestSmsPermissions,
+                  icon: const Icon(Icons.sms_failed),
+                  label: const Text('Enable SMS Analysis'),
+                ),
+              const SizedBox(height: 8),
+              const Text(
+                'SMS analysis reads your M-Pesa transaction messages to provide personalized financial insights',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
         Expanded(
@@ -1125,7 +1684,7 @@ class _UserPlanHeader extends StatelessWidget {
                 ),
               ],
             ),
-            if (plan.planDescription != null) ...[
+            if (plan.planDescription != null && plan.planDescription!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
                 plan.planDescription!,
@@ -1195,7 +1754,7 @@ class _UserBudgetOverviewCard extends StatelessWidget {
                     icon: Icons.savings,
                   ),
                 ),
-                if (plan.savingsGoal != null) ...[
+                if (plan.savingsGoal != null && plan.savingsGoal! > 0) ...[
                   const SizedBox(width: 16),
                   Expanded(
                     child: _BudgetItem(
@@ -1383,6 +1942,145 @@ class _PlanActionsCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showPlanOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.share),
+            title: const Text('Share Plan'),
+            onTap: () {
+              Navigator.pop(context);
+              // TODO: Implement share functionality
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.copy),
+            title: const Text('Duplicate Plan'),
+            onTap: () {
+              Navigator.pop(context);
+              // TODO: Implement duplicate functionality
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete, color: Colors.red),
+            title: const Text('Delete Plan', style: TextStyle(color: Colors.red)),
+            onTap: () {
+              Navigator.pop(context);
+              _showDeleteConfirmation(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context) async {
+    final userProvider = context.read<UserProvider>();
+    final financialProvider = context.read<FinancialProvider>();
+
+    if (userProvider.currentUser == null) return;
+
+    final pin = await PinPromptDialog.show(
+      context,
+      title: 'Delete Budget Plan',
+      message: 'Enter your M-Pesa PIN to confirm deletion of this budget plan.',
+      confirmText: 'Delete',
+    );
+
+    if (pin != null) {
+      final success = await financialProvider.deleteUserPlan(
+        plan.id,
+        userProvider.currentUser!.phone,
+        pin,
+      );
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Budget plan deleted successfully')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete plan: ${financialProvider.error ?? 'Unknown error'}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+}
+
+class _PlanCardActions extends StatelessWidget {
+  final UserBudgetPlan plan;
+
+  const _PlanCardActions({required this.plan});
+
+  @override
+  Widget build(BuildContext context) {
+    final financialProvider = context.watch<FinancialProvider>();
+    final isActive = financialProvider.activeUserPlan?.id == plan.id;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Plan Actions',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.pushNamed(
+                  context,
+                  '/budget-creation',
+                  arguments: plan, // Pass the plan for editing
+                ),
+                icon: const Icon(Icons.edit),
+                label: const Text('Edit'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (!isActive)
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => financialProvider.setActivePlan(plan.id),
+                  icon: const Icon(Icons.check_circle),
+                  label: const Text('Set Active'),
+                ),
+              )
+            else
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.green.withAlpha(25),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green),
+                  ),
+                  child: const Text(
+                    'Active Plan',
+                    style: TextStyle(color: Colors.green, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: () => _showPlanOptions(context),
+              icon: const Icon(Icons.more_vert),
+              tooltip: 'Options',
+            ),
+          ],
+        ),
+      ],
     );
   }
 

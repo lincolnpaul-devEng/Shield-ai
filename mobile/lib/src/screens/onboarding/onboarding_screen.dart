@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'dart:math' as math;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
@@ -23,78 +24,66 @@ class OnboardingView extends StatefulWidget {
 }
 
 class _OnboardingViewState extends State<OnboardingView> {
-  final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
   void _nextPage() {
-    if (_currentPage < 2) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
+    setState(() {
+      if (_currentPage < 2) {
+        _currentPage++;
+      }
+    });
   }
 
   void _skipToLast() {
-    _pageController.animateToPage(
-      2,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    setState(() {
+      _currentPage = 2;
+    });
   }
 
-  void _getStarted() {
-    Navigator.pushReplacementNamed(context, '/register');
+  void _getStarted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_onboarded', true);
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/register');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      _OnboardingPage(
+        title: 'Stay Protected.',
+        subtitle: 'Secure your mobile money with AI-powered fraud detection.',
+        showNextButton: true,
+        onNextPressed: _nextPage,
+        currentPage: _currentPage,
+      ),
+      _OnboardingPage(
+        title: 'How M-Pesa Max Works',
+        subtitle: 'Our AI analyzes your transaction patterns in real-time, detecting suspicious activities and alerting you instantly. Stay one step ahead of fraudsters.',
+        showNextButton: true,
+        onNextPressed: _nextPage,
+        currentPage: _currentPage,
+      ),
+      _OnboardingPage(
+        title: 'Ready to Get Started?',
+        subtitle: 'Join thousands of users who trust M-Pesa Max to protect their finances. Create your account now.',
+        showNextButton: false,
+        onGetStartedPressed: _getStarted,
+        currentPage: _currentPage,
+      ),
+    ];
+
     return Stack(
       children: [
         // Background Glows
         const _BackgroundGlows(),
 
         // Main Content
-        PageView(
-          controller: _pageController,
-          onPageChanged: (page) {
-            setState(() {
-              _currentPage = page;
-            });
-          },
-          children: [
-            _OnboardingPage(
-              title: 'Stay Protected.',
-              subtitle: 'Secure your mobile money with AI-powered fraud detection.',
-              showNextButton: true,
-              onNextPressed: _nextPage,
-              currentPage: _currentPage,
-            ),
-            _OnboardingPage(
-              title: 'How Shield AI Works',
-              subtitle: 'Our AI analyzes your transaction patterns in real-time, detecting suspicious activities and alerting you instantly. Stay one step ahead of fraudsters.',
-              showNextButton: true,
-              onNextPressed: _nextPage,
-              currentPage: _currentPage,
-            ),
-            _OnboardingPage(
-              title: 'Ready to Get Started?',
-              subtitle: 'Join thousands of users who trust Shield AI to protect their finances. Create your account now.',
-              showNextButton: false,
-              onGetStartedPressed: _getStarted,
-              currentPage: _currentPage,
-            ),
-          ],
-        ),
+        pages[_currentPage],
 
         // Skip Button
-        _SkipButton(onPressed: _skipToLast),
+        if (_currentPage < 2) _SkipButton(onPressed: _skipToLast),
       ],
     );
   }

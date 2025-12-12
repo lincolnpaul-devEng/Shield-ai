@@ -168,6 +168,8 @@ class _BudgetCreationScreenState extends State<BudgetCreationScreen> {
 
     if (userProvider.currentUser == null) return;
 
+    final userPhone = userProvider.currentUser!.phone; // Store before async operations
+
     setState(() {
       _isLoading = true;
     });
@@ -175,7 +177,7 @@ class _BudgetCreationScreenState extends State<BudgetCreationScreen> {
     try {
       final plan = UserBudgetPlan(
         id: _isEditing ? _planToEdit!.id : '', // Will be set by backend for new plans
-        userId: userProvider.currentUser!.phone,
+        userId: userPhone,
         planName: _planNameController.text.trim(),
         planDescription: _isEditing
             ? _planToEdit!.planDescription
@@ -195,8 +197,8 @@ class _BudgetCreationScreenState extends State<BudgetCreationScreen> {
       );
 
       final success = _isEditing
-          ? await financialProvider.updateUserPlan(plan, userProvider.currentUser!.phone, _pinController.text)
-          : await financialProvider.createUserPlan(plan, userProvider.currentUser!.phone, _pinController.text);
+          ? await financialProvider.updateUserPlan(plan, userPhone, _pinController.text)
+          : await financialProvider.createUserPlan(plan, userPhone, _pinController.text);
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -208,13 +210,13 @@ class _BudgetCreationScreenState extends State<BudgetCreationScreen> {
         final userProvider = context.read<UserProvider>();
         if (userProvider.currentUser != null) {
           await financialProvider.loadUserPlans(
-            userProvider.currentUser!.phone,
+            userPhone,
             _pinController.text,
           );
         }
 
         // Navigate back to financial planning screen
-        Navigator.pushReplacementNamed(context, '/financial-planning');
+        Navigator.pushNamed(context, '/financial-planning');
       } else {
         // Handle operation failure
         if (mounted) {
@@ -701,7 +703,7 @@ class _BudgetCreationScreenState extends State<BudgetCreationScreen> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(_currentStep < 2 ? 'Next' : (_isEditing ? 'Update Plan' : 'Create Plan')),
+                  : Text(_currentStep < 2 ? 'Next' : (_isEditing ? 'Save Changes' : 'Create Plan')),
             ),
           ),
         ],

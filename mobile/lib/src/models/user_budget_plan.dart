@@ -27,19 +27,21 @@ class UserBudgetPlan {
 
   factory UserBudgetPlan.fromJson(Map<String, dynamic> json) {
     return UserBudgetPlan(
-      id: json['id'],
-      userId: json['user_id'].toString(), // Convert to string since backend returns integer
-      planName: json['plan_name'],
+      id: json['id'] ?? '',
+      userId: json['user_id']?.toString() ?? '', // Convert to string since backend returns integer
+      planName: json['plan_name'] ?? '',
       planDescription: json['plan_description'],
-      monthlyIncome: (json['monthly_income'] as num).toDouble(),
+      monthlyIncome: (json['monthly_income'] as num?)?.toDouble() ?? 0.0,
       savingsGoal: json['savings_goal'] != null ? (json['savings_goal'] as num).toDouble() : null,
       savingsPeriodMonths: json['savings_period_months'],
-      allocations: Map<String, double>.from(
-        json['allocations'].map((key, value) => MapEntry(key, (value as num).toDouble()))
-      ),
-      isActive: json['is_active'],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      allocations: json['allocations'] != null
+          ? Map<String, double>.from(
+              (json['allocations'] as Map).map((key, value) => MapEntry(key, (value as num?)?.toDouble() ?? 0.0))
+            )
+          : {},
+      isActive: json['is_active'] ?? false,
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : DateTime.now(),
     );
   }
 

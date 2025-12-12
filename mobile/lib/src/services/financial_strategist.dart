@@ -9,8 +9,7 @@ class FinancialStrategist {
   /// Ask AI a question about financial planning
   Future<ConversationMessage> askQuestion(
     String question,
-    String userId,
-    String pin, {
+    String userId, {
     List<Map<String, dynamic>>? conversationHistory,
   }) async {
     try {
@@ -18,8 +17,8 @@ class FinancialStrategist {
 
       return ConversationMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        question: response['question'] as String,
-        answer: response['answer'] as String,
+        question: response['question']?.toString() ?? question,
+        answer: response['answer']?.toString() ?? 'I apologize, but I\'m unable to answer your question right now. Please try again later.',
         timestamp: DateTime.now(),
         isFromUser: false, // AI response, not from user
       );

@@ -1,96 +1,108 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-
-import 'src/theme/app_colors.dart';
-import 'src/providers/demo_provider.dart';
-import 'src/providers/financial_provider.dart';
-import 'src/providers/fraud_provider.dart';
-import 'src/providers/insights_provider.dart';
-import 'src/providers/transaction_provider.dart';
-import 'src/providers/user_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'src/theme/app_theme.dart';
+import 'src/providers/theme_provider.dart';
 import 'src/routes/app_router.dart';
 import 'src/services/api_service.dart';
+import 'src/services/auth_token_service.dart';
+import 'src/services/performance_monitor.dart';
 import 'src/services/demo_service.dart';
 import 'src/services/financial_strategist.dart';
 import 'src/services/insights_service.dart';
 import 'src/services/mpesa_sync_service.dart';
 import 'src/services/notification_service.dart';
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/services.dart';
+import 'src/providers/demo_provider.dart';
+import 'src/providers/financial_provider.dart';
+import 'src/providers/fraud_provider.dart';
+import 'src/providers/insights_provider.dart';
+import 'src/providers/sms_provider.dart';
+import 'src/providers/transaction_provider.dart';
+import 'src/providers/user_provider.dart';
+import 'src/config/performance_config.dart';
+import 'src/config/device_config.dart';
+import 'src/widgets/debug_overlay.dart';
 
 Future<void> main() async {
+  final startupStopwatch = Stopwatch()..start();
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Start backend server automatically - DISABLED to allow manual control
-  // try {
-  //   await BackendService.startBackendServer();
-  // } catch (e) {
-  //   print('Warning: Failed to start backend server: $e');
-  //   print('Make sure Python and backend dependencies are installed.');
-  // }
+  final performanceMonitor = PerformanceMonitor();
 
-  // Initialize services
-  await NotificationService.initialize();
-
-  // Set preferred orientations
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-
-  // Set system UI overlay style
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarColor: Colors.white,
-      systemNavigationBarIconBrightness: Brightness.dark,
-    ),
+  await performanceMonitor.measureOperation(
+    'notification_init',
+    () => NotificationService.initialize(),
   );
 
-  // Determine the base URL dynamically.
-  // The --dart-define flag can override this, e.g.:
-  // flutter run --dart-define=API_BASE_URL=http://prod.api.com/api
+  await performanceMonitor.measureOperation(
+    'orientation_setup',
+    () => SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]),
+  );
+
   String getBaseUrl() {
-    // First, check for an environment variable override.
     const fromEnv = String.fromEnvironment('API_BASE_URL');
-    if (fromEnv.isNotEmpty) {
-      return fromEnv;
-    }
-    // Default for Android emulator.
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:5000/api';
-    }
-    // Default for iOS simulator, web, and desktop.
+    if (fromEnv.isNotEmpty) return fromEnv;
+    if (Platform.isAndroid) return 'http://10.0.2.2:5000/api';
     return 'http://localhost:5000/api';
   }
 
-  // Dependency injection setup
-  final apiService = ApiService(baseUrl: getBaseUrl());
+  final sharedPrefs = await performanceMonitor.measureOperation(
+    'shared_prefs_init',
+    () => SharedPreferences.getInstance(),
+  );
+
+  final tokenService = AuthTokenService();
+  await performanceMonitor.measureOperation(
+    'token_service_init',
+    () => tokenService.init(),
+  );
+
+  final apiService = ApiService(baseUrl: getBaseUrl(), tokenService: tokenService);
 
   final demoService = DemoService(apiService);
-
-  // Initialize M-Pesa sync service
   final mpesaSyncService = MpesaSyncService();
-  await mpesaSyncService.initialize(apiService);
 
-  // Initialize financial strategist
+  await performanceMonitor.measureOperation(
+    'mpesa_sync_init',
+    () => mpesaSyncService.initialize(apiService),
+  );
+
   final financialStrategist = FinancialStrategist(apiService);
-
-  // Initialize insights service
   final insightsService = InsightsService();
 
-  runApp(ShieldAIApp(
-    apiService: apiService,
-    demoService: demoService,
-    mpesaSyncService: mpesaSyncService,
-    financialStrategist: financialStrategist,
-    insightsService: insightsService,
-  ));
+  startupStopwatch.stop();
+  performanceMonitor.measureSyncOperation('app_startup_complete', () {
+    final startupTime = startupStopwatch.elapsed;
+    if (startupTime > PerformanceConfig.targetStartupTime) {
+      performanceMonitor.logPerformanceSummary();
+    }
+  });
+
+  performanceMonitor.logPerformanceSummary();
+  Timer.periodic(PerformanceConfig.performanceLogInterval, (_) {
+    performanceMonitor.logPerformanceSummary();
+  });
+
+  runApp(
+    ShieldAIApp(
+      sharedPreferences: sharedPrefs,
+      apiService: apiService,
+      demoService: demoService,
+      mpesaSyncService: mpesaSyncService,
+      financialStrategist: financialStrategist,
+      insightsService: insightsService,
+    ),
+  );
 }
 
 class ShieldAIApp extends StatelessWidget {
+  final SharedPreferences sharedPreferences;
   final ApiService apiService;
   final DemoService demoService;
   final MpesaSyncService mpesaSyncService;
@@ -99,6 +111,7 @@ class ShieldAIApp extends StatelessWidget {
 
   const ShieldAIApp({
     super.key,
+    required this.sharedPreferences,
     required this.apiService,
     required this.demoService,
     required this.mpesaSyncService,
@@ -110,210 +123,77 @@ class ShieldAIApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Core providers
         ChangeNotifierProvider(create: (_) => UserProvider(apiService)),
         ChangeNotifierProvider(create: (_) => TransactionProvider(apiService)),
-
-        // Fraud provider depends on user provider
         ChangeNotifierProxyProvider<UserProvider, FraudProvider>(
           create: (_) => FraudProvider(apiService, UserProvider(apiService)),
           update: (_, userProvider, __) => FraudProvider(apiService, userProvider),
         ),
-
-        // Financial planning provider
         ChangeNotifierProvider(create: (_) => FinancialProvider(financialStrategist, apiService)),
-
-        // Insights provider
         ChangeNotifierProvider(create: (_) => InsightsProvider(insightsService)),
-
-        // Demo provider for development
         ChangeNotifierProvider(create: (_) => DemoProvider(demoService)),
+        ChangeNotifierProvider(create: (_) => SmsProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider(sharedPreferences)),
       ],
-      child: MaterialApp(
-        title: 'Shield AI - Fraud Protection',
-        debugShowCheckedModeBanner: false,
-        theme: _buildLightTheme(),
-        darkTheme: _buildDarkTheme(),
-        themeMode: ThemeMode.system,
-        initialRoute: AppRouter.initialRoute,
-        onGenerateRoute: AppRouter.onGenerateRoute,
+      child: Builder(
+        builder: (context) {
+          final themeProvider = context.watch<ThemeProvider>();
 
-        // Global error handling
-        builder: (context, child) {
-          return MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: const TextScaler.linear(1.0),
+          return DebugOverlay(
+            child: MaterialApp(
+              title: 'M-Pesa Max - Fraud Protection',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: themeProvider.isDarkMode
+                  ? ThemeMode.dark
+                  : ThemeMode.light,
+              initialRoute: AppRouter.initialRoute,
+              onGenerateRoute: AppRouter.onGenerateRoute,
+              builder: (context, child) {
+                final mediaQuery = MediaQuery.of(context);
+                final deviceType = DeviceConfig.getDeviceType(context);
+
+                final textScale = switch (deviceType) {
+                  DeviceType.smallPhone => 0.9,
+                  DeviceType.normalPhone => 1.0,
+                  DeviceType.largePhone => 1.05,
+                  DeviceType.smallTablet => 1.1,
+                  DeviceType.largeTablet => 1.15,
+                };
+
+                return MediaQuery(
+                  data: mediaQuery.copyWith(
+                    textScaler: TextScaler.linear(textScale),
+                    devicePixelRatio: mediaQuery.devicePixelRatio.clamp(1.0, 4.0),
+                    size: Size(
+                      mediaQuery.size.width.clamp(320, 1200),
+                      mediaQuery.size.height,
+                    ),
+                  ),
+                  child: Builder(
+                    builder: (context) => Theme(
+                      data: Theme.of(context).copyWith(
+                        textTheme: DeviceConfig.getOptimalTextTheme(context),
+                        appBarTheme: DeviceConfig.getOptimalAppBarTheme(context),
+                        iconTheme: DeviceConfig.getOptimalIconTheme(context),
+                        buttonTheme: DeviceConfig.getOptimalButtonTheme(context),
+                      ),
+                      child: SafeArea(
+                        child: child ?? const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
+                );
+              },
+              locale: const Locale('en', 'KE'),
+              supportedLocales: const [
+                Locale('en', 'KE'),
+                Locale('sw', 'KE'),
+              ],
             ),
-            child: child ?? const SizedBox.shrink(),
           );
         },
-
-        // Localization (can be expanded later)
-        locale: const Locale('en', 'KE'),
-        supportedLocales: const [
-          Locale('en', 'KE'),
-          Locale('sw', 'KE'), // Swahili support for future
-        ],
-      ),
-    );
-  }
-
-  ThemeData _buildLightTheme() {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
-      brightness: Brightness.light,
-      primary: AppColors.primary,
-      secondary: AppColors.accent,
-      error: AppColors.error,
-      surface: AppColors.background,
-      onPrimary: Colors.white,
-      onSecondary: Colors.white,
-      onSurface: Colors.black87,
-      onError: Colors.white,
-    );
-
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: colorScheme,
-
-      // Text theme
-      textTheme: TextTheme(
-        headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
-        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
-        headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
-        titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
-        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
-        titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
-        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
-        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
-        bodySmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
-        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
-        labelMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
-        labelSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
-      ),
-
-      // App bar theme
-      appBarTheme: AppBarTheme(
-        backgroundColor: colorScheme.primaryContainer,
-        foregroundColor: colorScheme.onPrimaryContainer,
-        elevation: 0,
-        centerTitle: true,
-        titleTextStyle: TextStyle(
-          color: colorScheme.onPrimaryContainer,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-
-      // Enhanced button theme
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          elevation: 2,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-
-      // Enhanced input decoration theme
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.outline),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.error),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      ),
-
-      // Enhanced snackbar theme
-      snackBarTheme: SnackBarThemeData(
-        backgroundColor: colorScheme.inverseSurface,
-        contentTextStyle: TextStyle(color: colorScheme.onInverseSurface),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  ThemeData _buildDarkTheme() {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
-      brightness: Brightness.dark,
-      primary: AppColors.primary,
-      secondary: AppColors.accent,
-      error: AppColors.error,
-      surface: const Color(0xFF1E1E1E),
-      onPrimary: Colors.white,
-      onSecondary: Colors.white,
-      onSurface: Colors.white,
-      onError: Colors.white,
-    );
-
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: colorScheme,
-
-      // Text theme
-      textTheme: TextTheme(
-        headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
-        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
-        headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
-        titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
-        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
-        titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
-        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
-        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
-        bodySmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
-        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
-        labelMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
-        labelSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
-      ),
-
-      // Similar customizations for dark theme
-      appBarTheme: AppBarTheme(
-        backgroundColor: colorScheme.primaryContainer,
-        foregroundColor: colorScheme.onPrimaryContainer,
-        elevation: 0,
-        centerTitle: true,
-      ),
-
-
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.outline),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.error),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }

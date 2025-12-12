@@ -10,6 +10,8 @@ import '../screens/budget_creation_screen.dart';
 import '../screens/send_money_screen.dart';
 import '../screens/transactions_screen.dart';
 import '../screens/financial_planning_screen.dart';
+import '../screens/terms_of_service_screen.dart';
+import '../screens/privacy_policy_screen.dart';
 
 class AppRouter {
   static const initialRoute = '/splash';
@@ -36,6 +38,10 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const TransactionsScreen());
       case '/financial-planning':
         return MaterialPageRoute(builder: (_) => const FinancialPlanningScreen());
+      case '/terms-of-service':
+        return MaterialPageRoute(builder: (_) => const TermsOfServiceScreen());
+      case '/privacy-policy':
+        return MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen());
       case '/main':
         final args = settings.arguments as int?;
         return MaterialPageRoute(builder: (_) => MainNavigation(initialIndex: args ?? 0));

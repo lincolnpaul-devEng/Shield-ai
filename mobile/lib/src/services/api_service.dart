@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../models/models.dart';
+import 'auth_token_service.dart';
 
 typedef RequestInterceptor = Future<http.BaseRequest> Function(http.BaseRequest request);
 typedef ResponseInterceptor = Future<void> Function(http.StreamedResponse response);
@@ -15,15 +16,19 @@ class ApiService {
   final http.Client _client;
   final Duration _timeout;
   final int _maxRetries;
+  final AuthTokenService _tokenService;
+  bool _isRefreshing = false;
 
   ApiService({
     required this.baseUrl,
+    required AuthTokenService tokenService,
     http.Client? client,
     Duration? timeout,
     int? maxRetries,
-  }) : _client = client ?? http.Client(),
-       _timeout = timeout ?? const Duration(seconds: 30),
-       _maxRetries = maxRetries ?? 3 {
+  })  : _client = client ?? http.Client(),
+        _timeout = timeout ?? const Duration(seconds: 30),
+        _maxRetries = maxRetries ?? 3,
+        _tokenService = tokenService {
 
     // Default interceptor for JSON
     addRequestInterceptor((req) async {
@@ -82,6 +87,44 @@ class ApiService {
     return _decode(streamed);
   }
 
+  Future<bool> _tryRefreshAccessToken() async {
+    try {
+      final refreshToken = await _tokenService.getRefreshToken();
+      if (refreshToken == null || refreshToken.isEmpty) {
+        return false;
+      }
+
+      _isRefreshing = true;
+      final uri = Uri.parse('$baseUrl/refresh');
+      final response = await _client.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $refreshToken',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final access = data['access_token'] as String?;
+        final expiresIn = data['expires_in'] as int?;
+        if (access != null) {
+          await _tokenService.saveTokens(
+            accessToken: access,
+            refreshToken: refreshToken,
+            expiresInSeconds: expiresIn,
+          );
+          return true;
+        }
+      }
+      return false;
+    } catch (_) {
+      return false;
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
   Future<http.StreamedResponse> _send(http.BaseRequest originalRequest, {int? retryCount}) async {
     final attempts = retryCount ?? _maxRetries;
 
@@ -96,8 +139,23 @@ class ApiService {
           processedRequest = await i(processedRequest);
         }
 
+        // Attach Authorization header if token exists
+        final accessToken = await _tokenService.getAccessToken();
+        if (accessToken != null && accessToken.isNotEmpty) {
+          processedRequest.headers['Authorization'] = 'Bearer $accessToken';
+        }
+
         // Send request with timeout
         final streamed = await _client.send(processedRequest).timeout(_timeout);
+
+        // If unauthorized, attempt a single token refresh then retry
+        if (streamed.statusCode == 401 && !_isRefreshing) {
+          final refreshed = await _tryRefreshAccessToken();
+          if (refreshed) {
+            final retried = await _send(originalRequest, retryCount: 1);
+            return retried;
+          }
+        }
 
         // Apply response interceptors
         for (final i in _responseInterceptors) {
@@ -189,7 +247,6 @@ class ApiService {
   Future<FraudCheckResult> checkFraud(String userId, TransactionModel transaction) async {
     try {
       final requestData = {
-        'user_id': userId,
         'transaction': {
           'amount': transaction.amount,
           'recipient': transaction.recipient,
@@ -227,8 +284,8 @@ class ApiService {
     }
   }
 
-  /// Login a user
-  Future<UserModel> loginUser(String phone, String pin) async {
+  /// Login a user (returns user + tokens)
+  Future<AuthSession> loginUser(String phone, String pin) async {
     try {
       final requestData = {
         'phone': phone,
@@ -236,7 +293,31 @@ class ApiService {
       };
 
       final response = await post('/login', requestData);
-      return UserModel.fromJson(response);
+      final userJson = response['user'] as Map<String, dynamic>;
+      final access = response['access_token'] as String?;
+      final refresh = response['refresh_token'] as String?;
+      final expiresIn = response['expires_in'] as int?;
+
+      if (access == null || refresh == null) {
+        throw ApiException(500, 'Missing auth tokens in response');
+      }
+
+      final session = AuthSession(
+        user: UserModel.fromJson(userJson),
+        tokens: AuthTokens(
+          accessToken: access,
+          refreshToken: refresh,
+          expiresIn: expiresIn,
+        ),
+      );
+
+      await _tokenService.saveTokens(
+        accessToken: access,
+        refreshToken: refresh,
+        expiresInSeconds: expiresIn,
+      );
+
+      return session;
     } catch (e) {
       developer.log('loginUser failed: $e', name: 'ApiService', error: e);
       rethrow;
@@ -264,11 +345,10 @@ class ApiService {
   }
 
   /// Update user's M-Pesa balance
-  Future<Map<String, dynamic>> updateMpesaBalance(String phone, double balance, String pin) async {
+  Future<Map<String, dynamic>> updateMpesaBalance(String phone, double balance) async {
     try {
       final requestData = {
         'balance': balance,
-        'pin': pin,
       };
 
       final response = await post('/users/$phone/balance', requestData);
@@ -279,27 +359,29 @@ class ApiService {
     }
   }
 
-  /// Ask AI a question about financial planning
   /// Ask AI a question about financial planning (M-Pesa Max)
-Future<Map<String, dynamic>> askAI(String userId, String question, {List<Map<String, dynamic>>? conversationHistory}) async {
-  try {
-    final Map<String, dynamic> requestData = {
-      'user_id': userId,
-      'query': question,  // M-Pesa Max uses 'query' instead of 'question'
-    };
+  Future<Map<String, dynamic>> askAI(
+    String userId,
+    String question, {
+    List<Map<String, dynamic>>? conversationHistory,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'query': question,
+      };
 
-    // Add conversation history if provided
-    if (conversationHistory != null && conversationHistory.isNotEmpty) {
-      requestData['conversation_history'] = conversationHistory;
+      // Add conversation history if provided
+      if (conversationHistory != null && conversationHistory.isNotEmpty) {
+        requestData['conversation_history'] = conversationHistory;
+      }
+
+      final response = await post('/mpesa-max', requestData);  // Use M-Pesa Max endpoint
+      return response;
+    } catch (e) {
+      developer.log('askAI failed: $e', name: 'ApiService', error: e);
+      rethrow;
     }
-
-    final response = await post('/mpesa-max', requestData);  // Use M-Pesa Max endpoint
-    return response;
-  } catch (e) {
-    developer.log('askAI failed: $e', name: 'ApiService', error: e);
-    rethrow;
   }
-}
 }
 
 class ApiException implements Exception {
