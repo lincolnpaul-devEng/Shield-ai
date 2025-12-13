@@ -1,4 +1,5 @@
 /// M-Pesa specific models for STK Push integration
+library;
 
 /// Result of STK Push initiation
 class StkPushResult {

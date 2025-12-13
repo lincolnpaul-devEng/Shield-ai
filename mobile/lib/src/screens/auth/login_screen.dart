@@ -40,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final fullPhone = phone.startsWith('+254') ? phone : '+254${phone}';
+      final fullPhone = phone.startsWith('+254') ? phone : '+254$phone';
 
       final userProvider = context.read<UserProvider>();
       final success = await userProvider.loginUser(fullPhone, pin);

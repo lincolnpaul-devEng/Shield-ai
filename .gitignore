@@ -2,7 +2,7 @@
 # OS
 .DS_Store
 Thumbs.db
-
+.idx
 # Python
 __pycache__/
 *.py[cod]

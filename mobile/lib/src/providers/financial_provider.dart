@@ -17,11 +17,11 @@ class FinancialProvider extends ChangeNotifier {
   DateTime? _lastGenerated;
 
   // Enhanced features state
-  List<ConversationMessage> _conversations = [];
+  final List<ConversationMessage> _conversations = [];
   List<SpendingPrediction> _predictions = [];
   List<SpendingAnomaly> _anomalies = [];
   List<SmartSuggestion> _suggestions = [];
-  List<PlanRefinement> _refinements = [];
+  final List<PlanRefinement> _refinements = [];
 
   // User budget plans
   List<UserBudgetPlan> _userPlans = [];

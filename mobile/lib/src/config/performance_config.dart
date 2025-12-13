@@ -1,5 +1,6 @@
 /// Performance configuration for Shield AI
 /// Optimized for 10,000+ concurrent users and 99.9% uptime
+library;
 
 class PerformanceConfig {
   // API Configuration

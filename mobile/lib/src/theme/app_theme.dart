@@ -8,14 +8,13 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary).copyWith(
         secondary: AppColors.accent,
         error: AppColors.error,
-        background: AppColors.lightBackground,
         surface: AppColors.lightSurface,
         onSurface: AppColors.lightOnSurface,
         primaryContainer: AppColors.lightGreen,
       ),
       scaffoldBackgroundColor: AppColors.lightBackground,
       appBarTheme: const AppBarTheme(
-        color: AppColors.lightGreen,
+        backgroundColor: AppColors.lightGreen,
         elevation: 0,
         iconTheme: IconThemeData(color: AppColors.primary),
         titleTextStyle: TextStyle(
@@ -38,13 +37,12 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary, brightness: Brightness.dark).copyWith(
         secondary: AppColors.accent,
         error: AppColors.error,
-        background: AppColors.darkBackground,
         surface: AppColors.darkSurface,
         onSurface: AppColors.darkOnSurface,
       ),
       scaffoldBackgroundColor: AppColors.darkBackground,
       appBarTheme: const AppBarTheme(
-        color: AppColors.primary,
+        backgroundColor: AppColors.primary,
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.white),
         titleTextStyle: TextStyle(
